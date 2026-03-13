@@ -5,17 +5,20 @@ import {
     handleGetStaffStats,
     getAdminsIdForStaff
 } from "../controllers/staff_issue.controllers.js";
-import {staffAuth} from "../middleware/staffAuth.js";
+import { staffAuth } from "../middleware/staffAuth.js";
+import { workspaceResolver } from "../middleware/workspaceAuth.js";
 import { getComplaintChat, sendComplaintChat } from "../controllers/staff_chat.controllers.js";
 
-const router=express.Router();
+const router = express.Router();
 
-router.get("/",staffAuth,handleGetStaffComplaints);
-router.put("/:id",staffAuth,handleUpdateStaffComplaint);
-router.get("/stats",staffAuth,handleGetStaffStats);
-router.get("/:id/chat", staffAuth, getComplaintChat);
-router.post("/:id/chat", staffAuth, sendComplaintChat);
-router.get("/admins/list", staffAuth, getAdminsIdForStaff);
+// All staff issue routes require staffAuth + workspaceResolver
+router.use(staffAuth, workspaceResolver);
 
+router.get("/", handleGetStaffComplaints);
+router.put("/:id", handleUpdateStaffComplaint);
+router.get("/stats", handleGetStaffStats);
+router.get("/:id/chat", getComplaintChat);
+router.post("/:id/chat", sendComplaintChat);
+router.get("/admins/list", getAdminsIdForStaff);
 
 export default router;

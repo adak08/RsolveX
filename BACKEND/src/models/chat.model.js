@@ -9,27 +9,31 @@ const chatMessageSchema = new mongoose.Schema({
     senderId: {
         type: mongoose.Schema.Types.ObjectId,
         required: true,
-        refPath: 'senderModel'
+        refPath: "senderModel"
     },
     senderModel: {
         type: String,
         required: true,
-        enum: ['Admin', 'Staff']
+        enum: ["Admin", "Staff"]
     },
     receiverId: {
         type: mongoose.Schema.Types.ObjectId,
         required: true,
-        refPath: 'receiverModel'
+        refPath: "receiverModel"
     },
     receiverModel: {
         type: String,
         required: true,
-        enum: ['Admin', 'Staff']
+        enum: ["Admin", "Staff"]
     },
     complaintId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "UserComplaint", // or "AdminComplaint" if chat is on admin complaint
-      default: null,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "UserComplaint",
+        default: null
+    },
+    workspaceId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Workspace"
     },
     message: {
         type: String,
@@ -38,8 +42,8 @@ const chatMessageSchema = new mongoose.Schema({
     },
     messageType: {
         type: String,
-        enum: ['text', 'image', 'file'],
-        default: 'text'
+        enum: ["text", "image", "file"],
+        default: "text"
     },
     fileUrl: String,
     isRead: {
@@ -52,19 +56,16 @@ const chatMessageSchema = new mongoose.Schema({
     },
     deletedBy: [{
         type: mongoose.Schema.Types.ObjectId,
-        refPath: 'deletedByModel'
+        refPath: "deletedByModel"
     }],
-
-     deletedByModel: {
-      type: String,
-      enum: ["Admin", "Staff"],
-    },
+    deletedByModel: {
+        type: String,
+        enum: ["Admin", "Staff"]
+    }
 }, { timestamps: true });
 
-// Index for efficient queries
-chatMessageSchema.index({ conversationId: 1, createdAt: -1 });
+chatMessageSchema.index({ workspaceId: 1, conversationId: 1, createdAt: -1 });
 chatMessageSchema.index({ senderId: 1, receiverId: 1 });
 chatMessageSchema.index({ receiverId: 1, isRead: 1 });
 
-export default mongoose.model('ChatMessage', chatMessageSchema);
-
+export default mongoose.model("ChatMessage", chatMessageSchema);

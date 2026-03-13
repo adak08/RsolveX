@@ -1,78 +1,84 @@
 import UserComplaint from "../models/UserComplaint.models.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
 import Admin from "../models/Admin.models.js";
-export const handleGetStaffComplaints=async(req ,res)=>{
-    try{
-        const staffId=req.staff._id;
-        const {status}=req.query;
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { createAuditLog, AUDIT_ACTIONS } from "../utils/auditLog.js";
+import notificationHandler from "../utils/notificationHandler.js";
 
-        let filter={
-            assignedTo: staffId
+export const handleGetStaffComplaints = async (req, res) => {
+    try {
+        const staffId = req.staff._id;
+        const { status } = req.query;
+
+        let filter = {
+            assignedTo: staffId,
+            workspaceId: req.workspaceId  // Scope to workspace
         };
-        if(status && status !== 'all'){
-            filter.status=status;
+
+        if (status && status !== "all") {
+            filter.status = status;
         }
-        const complaints=await UserComplaint.find(filter)
-        .populate('user', 'name email phone')
-            .populate('assignedTo', 'name staffId email')
-            .populate('department', 'name')
-            .populate('comments.staff', 'name staffId')
-            .sort({ 
-                priority: -1, // High priority first
-                createdAt: -1 // Newest first
+
+        const complaints = await UserComplaint.find(filter)
+            .populate("user", "name email phone")
+            .populate("assignedTo", "name staffId email")
+            .populate("department", "name")
+            .populate("comments.staff", "name staffId")
+            .sort({
+                priority: -1,  // High priority first
+                createdAt: -1  // Newest first
             });
 
         res.status(200).json({
             success: true,
-            message: 'Staff complaints fetched successfully',
+            message: "Staff complaints fetched successfully",
             data: complaints,
             count: complaints.length
         });
-
     } catch (error) {
-        console.error('Error fetching staff complaints:', error);
+        console.error("Error fetching staff complaints:", error);
         res.status(500).json({
             success: false,
-            message: 'Error fetching staff complaints'
+            message: "Error fetching staff complaints"
         });
     }
 };
 
-// Staff updates complaint status
+// Staff updates complaint status — workspace scoped + audit log
 export const handleUpdateStaffComplaint = async (req, res) => {
     try {
         const { id } = req.params;
         const { status, comments } = req.body;
         const staffId = req.staff._id;
-        
-        const complaint = await UserComplaint.findById(id);
-        
+
+        const complaint = await UserComplaint.findOne({
+            _id: id,
+            workspaceId: req.workspaceId  // Scope to workspace
+        });
+
         if (!complaint) {
             return res.status(404).json({
                 success: false,
-                message: 'Complaint not found'
+                message: "Complaint not found"
             });
         }
 
-        // Check if staff is assigned to this complaint
+        // Check if this staff is actually assigned to this complaint
         if (complaint.assignedTo.toString() !== staffId.toString()) {
             return res.status(403).json({
                 success: false,
-                message: 'Not authorized to update this complaint'
+                message: "Not authorized to update this complaint"
             });
         }
 
         const updates = {};
         const activityLog = [];
 
-        // Update status
         if (status && complaint.status !== status) {
             complaint.status = status;
             updates.status = status;
             activityLog.push(`Status updated to ${status}`);
         }
 
-        // Add staff comments/work notes
         if (comments) {
             complaint.comments.push({
                 staff: staffId,
@@ -80,67 +86,81 @@ export const handleUpdateStaffComplaint = async (req, res) => {
                 createdAt: new Date()
             });
             updates.comments = comments;
-            activityLog.push('Work notes added');
+            activityLog.push("Work notes added");
         }
 
         complaint.updatedAt = new Date();
         await complaint.save();
 
-        // Populate for response
-        await complaint.populate('user', 'name email phone');
-        await complaint.populate('assignedTo', 'name staffId email');
-        await complaint.populate('department', 'name');
-        await complaint.populate('comments.staff', 'name staffId');
+        // Notify user on status change
+        if (status) {
+            await notificationHandler(
+                complaint.user,
+                "update",
+                `Your complaint "${complaint.title}" status was updated to: ${status}`,
+                "Complaint Status Update",
+                req.workspaceId
+            );
+        }
+
+        await complaint.populate("user", "name email phone");
+        await complaint.populate("assignedTo", "name staffId email");
+        await complaint.populate("department", "name");
+        await complaint.populate("comments.staff", "name staffId");
+
+        await createAuditLog({
+            workspaceId: req.workspaceId,
+            actorId: staffId,
+            actorModel: "Staff",
+            action: AUDIT_ACTIONS.STAFF_COMPLAINT_UPDATED,
+            targetId: complaint._id,
+            targetModel: "UserComplaint",
+            metadata: { updates, activityLog },
+            req
+        });
 
         res.json({
             success: true,
-            message: 'Complaint updated successfully',
+            message: "Complaint updated successfully",
             data: complaint,
-            updates: updates,
+            updates,
             activity: activityLog
         });
-
     } catch (error) {
-        console.error('Error updating staff complaint:', error);
+        console.error("Error updating staff complaint:", error);
         res.status(500).json({
             success: false,
-            message: 'Error updating complaint'
+            message: "Error updating complaint"
         });
     }
 };
 
-// Get staff workload statistics
+// Get staff workload statistics — workspace scoped
 export const handleGetStaffStats = async (req, res) => {
     try {
         const staffId = req.staff._id;
+        const workspaceFilter = { assignedTo: staffId, workspaceId: req.workspaceId };
 
         const stats = await UserComplaint.aggregate([
-            { $match: { assignedTo: staffId } },
+            { $match: { assignedTo: staffId, workspaceId: req.workspaceId } },
             {
                 $group: {
-                    _id: '$status',
+                    _id: "$status",
                     count: { $sum: 1 }
                 }
             }
         ]);
 
-        const totalAssigned = await UserComplaint.countDocuments({ assignedTo: staffId });
-        const pendingCount = await UserComplaint.countDocuments({ 
-            assignedTo: staffId, 
-            status: 'pending' 
-        });
-        const inProgressCount = await UserComplaint.countDocuments({ 
-            assignedTo: staffId, 
-            status: 'in-progress' 
-        });
-        const resolvedCount = await UserComplaint.countDocuments({ 
-            assignedTo: staffId, 
-            status: 'resolved' 
-        });
+        const [totalAssigned, pendingCount, inProgressCount, resolvedCount] = await Promise.all([
+            UserComplaint.countDocuments(workspaceFilter),
+            UserComplaint.countDocuments({ ...workspaceFilter, status: "pending" }),
+            UserComplaint.countDocuments({ ...workspaceFilter, status: "in-progress" }),
+            UserComplaint.countDocuments({ ...workspaceFilter, status: "resolved" })
+        ]);
 
         res.status(200).json({
             success: true,
-            message: 'Staff statistics fetched successfully',
+            message: "Staff statistics fetched successfully",
             data: {
                 totalAssigned,
                 byStatus: {
@@ -151,38 +171,35 @@ export const handleGetStaffStats = async (req, res) => {
                 detailedStats: stats
             }
         });
-
     } catch (error) {
-        console.error('Error fetching staff stats:', error);
+        console.error("Error fetching staff stats:", error);
         res.status(500).json({
             success: false,
-            message: 'Error fetching staff statistics'
+            message: "Error fetching staff statistics"
         });
     }
 };
 
-// Add this simple function to staff_issue.controller.js
+// Get admin ID for staff — workspace scoped
 export const getAdminsIdForStaff = asyncHandler(async (req, res) => {
     try {
-        console.log("🔍 Fetching admin information...");
-        
-        // Check if User model is working
-        const adminCount = await Admin.countDocuments({ role: 'admin' });
-        console.log(`📊 Total admin users: ${adminCount}`);
+        console.log("🔍 Fetching admin for workspace:", req.workspaceId);
 
-        const admin = await Admin.findOne({ role: 'admin' })
-            .select('_id name email role');
+        const admin = await Admin.findOne({
+            workspaceId: req.workspaceId,
+            role: "admin"
+        }).select("_id name email role");
 
         if (!admin) {
-            console.log("❌ No admin user found with role 'admin'");
+            console.log("❌ No admin found for this workspace");
             return res.status(404).json({
                 success: false,
-                message: 'No admin user found in system'
+                message: "No admin found for this workspace"
             });
         }
 
-        console.log("✅ Admin found:", admin);
-        
+        console.log("✅ Admin found:", admin.name);
+
         res.status(200).json({
             success: true,
             data: {
@@ -192,13 +209,12 @@ export const getAdminsIdForStaff = asyncHandler(async (req, res) => {
                 role: admin.role
             }
         });
-
     } catch (error) {
-        console.error('❌ SERVER ERROR in getAdminIdForStaff:', error);
+        console.error("❌ SERVER ERROR in getAdminsIdForStaff:", error);
         res.status(500).json({
             success: false,
-            message: 'Server error: ' + error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            message: "Server error: " + error.message,
+            stack: process.env.NODE_ENV === "development" ? error.stack : undefined
         });
     }
 });

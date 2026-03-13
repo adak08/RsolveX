@@ -1,27 +1,26 @@
 import express from "express";
-import { 
-    handleFetchAllUserIssues, 
-    handleFetchStaffList,      
+import {
+    handleFetchAllUserIssues,
+    handleFetchStaffList,
     handleUpdateIssue,
     handleGetComplaintDetails,
     handleBulkAssign
-} from "../controllers/admin_issue.controllers.js"; 
-import {adminAuth} from "../middleware/adminAuth.js";
-
-import {
-  getComplaintChat,
-  sendComplaintChat
-} from "../controllers/admin_chat.controllers.js";
+} from "../controllers/admin_issue.controllers.js";
+import { adminAuth } from "../middleware/adminAuth.js";
+import { workspaceResolver } from "../middleware/workspaceAuth.js";
+import { getComplaintChat, sendComplaintChat } from "../controllers/admin_chat.controllers.js";
 
 const router = express.Router();
 
-router.get("/", adminAuth, handleFetchAllUserIssues); 
+// All admin issue routes require adminAuth + workspaceResolver
+router.use(adminAuth, workspaceResolver);
 
-router.get("/staff", adminAuth, handleFetchStaffList); 
+router.get("/", handleFetchAllUserIssues);
+router.get("/staff", handleFetchStaffList);
+router.get("/:id", handleGetComplaintDetails);
+router.put("/:id", handleUpdateIssue);
+router.post("/bulk-assign", handleBulkAssign);
+router.get("/:id/chat", getComplaintChat);
+router.post("/:id/chat", sendComplaintChat);
 
-router.get("/:id", adminAuth, handleGetComplaintDetails);
-router.put("/:id",adminAuth,handleUpdateIssue);
-router.post("/bulk-assign",adminAuth,handleBulkAssign);
-router.get("/:id/chat", adminAuth, getComplaintChat);
-router.post("/:id/chat", adminAuth, sendComplaintChat);
 export default router;
