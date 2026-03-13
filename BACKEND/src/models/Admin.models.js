@@ -45,6 +45,10 @@ const adminSchema=new mongoose.Schema({
             default:false
         }
     },
+    workspaceId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Workspace"
+    },
     createdAt:{
         type:Date,
         default:Date.now

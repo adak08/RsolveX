@@ -12,7 +12,7 @@ const staffSchema= new mongoose.Schema({
         unique:true,
         lowercase:true
     },
-        staffId: {
+    staffId: {
         type: String,
         required: true, 
         unique: true,
@@ -37,10 +37,17 @@ const staffSchema= new mongoose.Schema({
         type:Boolean,
         default:true
     },
+    workspaceId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Workspace"
+    },
     createdAt:{
         type:Date,
         default:Date.now
     }
 });
+
+staffSchema.index({ workspaceId: 1 });
+staffSchema.index({ workspaceId: 1, isActive: 1 });
 
 export default mongoose.model("Staff",staffSchema);

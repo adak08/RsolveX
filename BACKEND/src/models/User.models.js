@@ -40,10 +40,16 @@ const userSchema=new mongoose.Schema({
         type:Boolean,
         default:false   //email/otp verification
     },
+    workspaceId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Workspace"
+    },
     createdAt:{
         type:Date,
         default:Date.now
     }
 });
+
+userSchema.index({ workspaceId: 1 });
 
 export default mongoose.model("User",userSchema);
