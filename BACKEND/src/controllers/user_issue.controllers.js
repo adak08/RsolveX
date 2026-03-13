@@ -1,8 +1,9 @@
 import UserComplaint from "../models/UserComplaint.models.js";
-import Leaderboard from "../models/LeaderBoard.models.js";
+import Leaderboard from "../models/Leaderboard.models.js";
 import Rating from "../models/Rating.models.js";
 import { getSmartAssignee } from "../utils/assignmentEngine.js";
 import { createAuditLog, AUDIT_ACTIONS } from "../utils/auditLog.js";
+import { classifyComplaintWithAI, calculatePriorityFromCategory } from "../utils/aiClassifier.js";
 
 // GET all issues with workspace scope + search + pagination
 export const handleAllIssueFetch = async (req, res) => {
@@ -91,7 +92,17 @@ export const handleSingleUserIssueFetch = async (req, res) => {
 // POST create issue — requires auth + workspaceResolver
 export const handleIssueGeneration = async (req, res) => {
     try {
-        const { title, description, location, category, images, priority: manualPriority, priorityMode } = req.body;
+        const {
+            title,
+            description,
+            location,
+            category,           // frontend-selected category (may be "other")
+            customOtherLabel,   // what user typed when they selected "other" e.g. "fire", "accident"
+            images,
+            priority: manualPriority,
+            priorityMode        // "manual" or "auto"
+        } = req.body;
+
         const userId = req.user._id;
 
         if (!title || !description || !location) {
@@ -101,11 +112,43 @@ export const handleIssueGeneration = async (req, res) => {
             });
         }
 
-        // Priority: auto-calculated from category unless admin/staff sends manual override
-        const resolvedPriorityMode = priorityMode === "manual" && manualPriority ? "manual" : "auto";
-        const resolvedPriority = resolvedPriorityMode === "manual"
-            ? manualPriority
-            : calculatePriority(mapCategoryToBackend(category));
+        const frontendCategory = mapCategoryToBackend(category);
+
+        // ─── Priority / Category Resolution ──────────────────────────────────
+        let resolvedCategory = frontendCategory;
+        let resolvedPriority = "medium";
+        let resolvedPriorityMode = "auto";
+        let aiReasoning = null;
+        let aiClassified = false;
+
+        if (priorityMode === "manual" && manualPriority) {
+            // Admin/staff explicitly set priority — respect it
+            resolvedPriority = manualPriority;
+            resolvedPriorityMode = "manual";
+
+        } else if (frontendCategory === "other" && (customOtherLabel || description)) {
+            // User selected "other" — let AI figure out real category + priority
+            console.log(`🤖 Calling AI classifier for: "${customOtherLabel || title}"`);
+
+            const aiResult = await classifyComplaintWithAI(
+                title,
+                description,
+                customOtherLabel || ""
+            );
+
+            resolvedCategory = aiResult.category;
+            resolvedPriority = aiResult.priority;
+            resolvedPriorityMode = "auto";
+            aiReasoning = aiResult.reasoning;
+            aiClassified = aiResult.aiClassified;
+
+            console.log(`🤖 AI result → category: ${resolvedCategory}, priority: ${resolvedPriority}`);
+
+        } else {
+            // Non-other category — use rule-based priority
+            resolvedPriority = calculatePriorityFromCategory(frontendCategory);
+            resolvedPriorityMode = "auto";
+        }
 
         const complaint = new UserComplaint({
             title,
@@ -116,17 +159,31 @@ export const handleIssueGeneration = async (req, res) => {
                 longitude: location.longitude
             },
             images,
-            category: mapCategoryToBackend(category),
+            category: resolvedCategory,
+            customOtherLabel: customOtherLabel || "",
             user: userId,
             workspaceId: req.workspaceId,
             status: "pending",
             priority: resolvedPriority,
-            priorityMode: resolvedPriorityMode
+            // "ai" mode when Gemini classified it, "manual" if admin set it, "auto" for rule-based
+            priorityMode: aiClassified ? "ai" : resolvedPriorityMode,
+            aiClassification: {
+                classified: aiClassified,
+                reasoning: aiReasoning || "",
+                originalInput: customOtherLabel || category || ""
+            },
+            // Inline comment so admins see AI reasoning directly in complaint thread
+            ...(aiClassified && {
+                comments: [{
+                    message: `[AI CLASSIFIED]: ${aiReasoning} (user typed: "${customOtherLabel || category}")`,
+                    createdAt: new Date()
+                }]
+            })
         });
 
         // Smart auto-assignment if workspace has it enabled
         if (req.workspace?.settings?.autoAssign) {
-            const assigneeId = await getSmartAssignee(req.workspaceId, complaint.category);
+            const assigneeId = await getSmartAssignee(req.workspaceId, resolvedCategory);
             if (assigneeId) {
                 complaint.assignedTo = assigneeId;
                 complaint.status = "in-progress";
@@ -139,9 +196,7 @@ export const handleIssueGeneration = async (req, res) => {
         // Update leaderboard — add points for submitting a complaint
         await Leaderboard.findOneAndUpdate(
             { workspaceId: req.workspaceId, userId },
-            {
-                $inc: { points: 10, complaintsSubmitted: 1 }
-            },
+            { $inc: { points: 10, complaintsSubmitted: 1 } },
             { upsert: true, new: true }
         );
 
@@ -152,14 +207,30 @@ export const handleIssueGeneration = async (req, res) => {
             action: AUDIT_ACTIONS.COMPLAINT_CREATED,
             targetId: complaint._id,
             targetModel: "UserComplaint",
-            metadata: { title, category: complaint.category, priority: resolvedPriority },
+            metadata: {
+                title,
+                originalCategory: category,
+                resolvedCategory,
+                priority: resolvedPriority,
+                priorityMode: resolvedPriorityMode,
+                aiClassified,
+                aiReasoning
+            },
             req
         });
 
         res.status(201).json({
             success: true,
             message: "Complaint submitted successfully",
-            data: complaint
+            data: complaint,
+            // Give the frontend visibility into what the AI decided
+            classification: {
+                category: resolvedCategory,
+                priority: resolvedPriority,
+                priorityMode: resolvedPriorityMode,
+                aiClassified,
+                reasoning: aiReasoning
+            }
         });
     } catch (error) {
         console.error("Error submitting complaint:", error);
@@ -316,11 +387,11 @@ export const handleRateComplaint = async (req, res) => {
             return res.status(400).json({ success: false, message: "You have already rated this complaint" });
         }
 
-        // Save rating on the complaint
+        // Save rating on the complaint document
         complaint.rating = { score, comment, ratedAt: new Date() };
         await complaint.save();
 
-        // Also save in Rating collection for aggregate queries
+        // Also save in Rating collection for aggregate staff-rating queries
         await Rating.create({
             workspaceId: req.workspaceId,
             complaintId: id,
@@ -386,7 +457,8 @@ export const handleGetComplaintRating = async (req, res) => {
     }
 };
 
-// Helper functions
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
 function mapCategoryToBackend(frontendCategory) {
     const categoryMap = {
         "infrastructure": "road",
@@ -395,15 +467,4 @@ function mapCategoryToBackend(frontendCategory) {
         "other": "other"
     };
     return categoryMap[frontendCategory] || frontendCategory || "other";
-}
-
-function calculatePriority(category) {
-    const priorityMap = {
-        "road": "high",
-        "water": "high",
-        "electricity": "high",
-        "sanitation": "medium",
-        "other": "low"
-    };
-    return priorityMap[category] || "medium";
 }
