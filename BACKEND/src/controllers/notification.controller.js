@@ -3,11 +3,20 @@ import notificationRoutes from "../utils/notificationHandler.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
+import mongoose from "mongoose";
+
+const ensureSameActor = (req, userId) => {
+    return req.actor?._id?.toString() === userId?.toString();
+};
 
 // Get all notifications for a user
 export const getUserNotifications = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     const { isRead, type, limit = 50, skip = 0 } = req.query;
+
+    if (!ensureSameActor(req, userId)) {
+        throw new ApiError(403, "Forbidden: cannot access another user's notifications");
+    }
 
     const query = { userId };
     if (isRead !== undefined) query.isRead = isRead === 'true';
@@ -32,11 +41,16 @@ export const getUserNotifications = asyncHandler(async (req, res) => {
 export const markAsRead = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const notification = await Notification.findByIdAndUpdate(
-        id,
-        { isRead: true },
-        { new: true }
-    );
+    const existingNotification = await Notification.findById(id);
+    if (!existingNotification) {
+        throw new ApiError(404, "Notification not found");
+    }
+
+    if (!ensureSameActor(req, existingNotification.userId)) {
+        throw new ApiError(403, "Forbidden: cannot update another user's notification");
+    }
+
+    const notification = await Notification.findByIdAndUpdate(id, { isRead: true }, { new: true });
 
     if (!notification) {
         throw new ApiError(404, "Notification not found");
@@ -51,6 +65,10 @@ export const markAsRead = asyncHandler(async (req, res) => {
 export const markAllAsRead = asyncHandler(async (req, res) => {
     const { userId } = req.params;
 
+    if (!ensureSameActor(req, userId)) {
+        throw new ApiError(403, "Forbidden: cannot update another user's notifications");
+    }
+
     await Notification.updateMany(
         { userId, isRead: false },
         { isRead: true }
@@ -64,6 +82,15 @@ export const markAllAsRead = asyncHandler(async (req, res) => {
 // Delete a notification
 export const deleteNotification = asyncHandler(async (req, res) => {
     const { id } = req.params;
+
+    const existingNotification = await Notification.findById(id);
+    if (!existingNotification) {
+        throw new ApiError(404, "Notification not found");
+    }
+
+    if (!ensureSameActor(req, existingNotification.userId)) {
+        throw new ApiError(403, "Forbidden: cannot delete another user's notification");
+    }
 
     const notification = await Notification.findByIdAndDelete(id);
 
@@ -80,6 +107,10 @@ export const deleteNotification = asyncHandler(async (req, res) => {
 export const clearAllNotifications = asyncHandler(async (req, res) => {
     const { userId } = req.params;
 
+    if (!ensureSameActor(req, userId)) {
+        throw new ApiError(403, "Forbidden: cannot clear another user's notifications");
+    }
+
     await Notification.deleteMany({ userId });
 
     res.status(200).json(
@@ -90,6 +121,10 @@ export const clearAllNotifications = asyncHandler(async (req, res) => {
 // Send custom notification (Admin/Staff use)
 export const sendCustomNotification = asyncHandler(async (req, res) => {
     const { userId, type, message, subject } = req.body;
+
+    if (req.actorRole === "user") {
+        throw new ApiError(403, "Only staff/admin can send notifications");
+    }
 
     if (!userId || !message) {
         throw new ApiError(400, "User ID and message are required");
@@ -110,6 +145,10 @@ export const sendCustomNotification = asyncHandler(async (req, res) => {
 // Send bulk notifications
 export const sendBulkNotifications = asyncHandler(async (req, res) => {
     const { userIds, type, message, subject } = req.body;
+
+    if (req.actorRole !== "admin") {
+        throw new ApiError(403, "Only admin can send bulk notifications");
+    }
 
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
         throw new ApiError(400, "User IDs array is required");
@@ -138,6 +177,10 @@ export const sendBulkNotifications = asyncHandler(async (req, res) => {
 // Get notification statistics
 export const getNotificationStats = asyncHandler(async (req, res) => {
     const { userId } = req.params;
+
+    if (!ensureSameActor(req, userId)) {
+        throw new ApiError(403, "Forbidden: cannot access another user's notification stats");
+    }
 
     const stats = await Notification.aggregate([
         { $match: { userId: mongoose.Types.ObjectId(userId) } },

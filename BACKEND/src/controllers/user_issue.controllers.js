@@ -1,5 +1,5 @@
 import UserComplaint from "../models/UserComplaint.models.js";
-import Leaderboard from "../models/Leaderboard.models.js";
+import Leaderboard from "../models/LeaderBoard.models.js";
 import Rating from "../models/Rating.models.js";
 import { getSmartAssignee } from "../utils/assignmentEngine.js";
 import { createAuditLog, AUDIT_ACTIONS } from "../utils/auditLog.js";

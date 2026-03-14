@@ -14,11 +14,14 @@ const router = express.Router();
 // All staff issue routes require staffAuth + workspaceResolver
 router.use(staffAuth, workspaceResolver);
 
-router.get("/", handleGetStaffComplaints);
-router.put("/:id", handleUpdateStaffComplaint);
-router.get("/stats", handleGetStaffStats);
-router.get("/:id/chat", getComplaintChat);
-router.post("/:id/chat", sendComplaintChat);
-router.get("/admins/list", getAdminsIdForStaff);
+
+
+router.get("/",             handleGetStaffComplaints);
+router.get("/stats",        handleGetStaffStats);       // was swallowed by /:id
+router.get("/admins/list",  getAdminsIdForStaff);       // was swallowed by /:id
+
+router.put("/:id",          handleUpdateStaffComplaint);
+router.get("/:id/chat",     getComplaintChat);
+router.post("/:id/chat",    sendComplaintChat);
 
 export default router;

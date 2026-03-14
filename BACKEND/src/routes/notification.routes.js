@@ -9,12 +9,12 @@ import {
     sendBulkNotifications,
     getNotificationStats
 } from "../controllers/notification.controller.js";
-import { auth } from "../middleware/auth.js";
+import { notificationAuth } from "../middleware/notificationAuth.js";
 
 const router = express.Router();
 
 // All routes require authentication
-router.use(auth);
+router.use(notificationAuth);
 
 // Get notifications for a user
 router.get("/:userId", getUserNotifications);

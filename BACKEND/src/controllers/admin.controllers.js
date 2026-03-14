@@ -9,11 +9,15 @@ const __dirname=path.dirname(__filename);
 
 export const adminLogin=async(req,res) =>{
     try{
-        const{ adminId,password } = req.body;
+        const{ adminId, email, phone, password } = req.body;
+        const adminIdentifier = adminId || email || phone;
         console.log("Received Admin Login Data:", req.body);
+        if (!adminIdentifier || !password) {
+            return res.status(400).json({ message: "Admin identifier and password are required" });
+        }
         // Find admin by email or phone (using adminId for the combined identifier, like the User login)
         const admin=await Admin.findOne({
-            $or:[{ email:adminId },{phone:adminId }],
+            $or:[{ email:adminIdentifier },{phone:adminIdentifier }],
         });
         if(!admin) {
             return res.status(404).json({ message: "Admin not found or Invalid Credentials" });
@@ -36,7 +40,15 @@ export const adminLogin=async(req,res) =>{
         res.status(200).json({
             success: true,
             message: "Login successful",
-            accessToken
+            accessToken,
+            admin: {
+                _id: admin._id,
+                name: admin.name,
+                email: admin.email,
+                role: admin.role,
+                permissions: admin.permissions,
+                workspaceId: admin.workspaceId
+            }
 });
 
     }

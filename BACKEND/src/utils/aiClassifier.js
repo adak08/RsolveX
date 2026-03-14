@@ -2,7 +2,7 @@
 // Uses Google Gemini to classify complaint category and priority
 // Called when user selects "other" category and provides a custom description
 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 // Valid values in our system
 const VALID_CATEGORIES = ["road", "water", "electricity", "sanitation", "other"];
