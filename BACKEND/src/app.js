@@ -38,6 +38,8 @@ const io = new Server(server, {
             "http://localhost:5500",
             "http://127.0.0.1:3000",
             "http://localhost:3000",
+            "http://localhost:5173",   // ← add this
+            "http://127.0.0.1:5173",
             "https://adak08.github.io",
             "https://webster-2025.onrender.com"
         ],
@@ -56,6 +58,8 @@ const allowedOrigins = [
     "http://localhost:5500",
     "http://127.0.0.1:3000",
     "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
     "https://adak08.github.io"
 ];
 
