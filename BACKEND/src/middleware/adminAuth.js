@@ -34,7 +34,17 @@ export const adminAuth=async(req,res,next)=>{
         next();
     }
     catch(error){
-        console.error("Admin auth error:",error);
+        if (error?.name === "TokenExpiredError") {
+            return res.status(401).json({
+                success:false,
+                message:"Session expired. Please sign in again."
+            });
+        }
+
+        if (error?.name !== "JsonWebTokenError") {
+            console.error("Admin auth error:",error);
+        }
+
         res.status(401).json({
             success:false,
             message:"Unauthorized access."

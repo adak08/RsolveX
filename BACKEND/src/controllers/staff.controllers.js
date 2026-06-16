@@ -2,11 +2,36 @@ import Staff from "../models/Staff.models.js";
 import bcrypt from "bcryptjs";
 import OTP from "../models/otp.model.js";
 import jwt from "jsonwebtoken";
+import { COMPLAINT_CATEGORIES, STAFF_AVAILABILITY_STATUSES } from "../constants.js";
+
+const normalizeCategoryList = (value) => {
+    const rawValues = Array.isArray(value)
+        ? value
+        : typeof value === "string"
+            ? value.split(",")
+            : [];
+
+    return [...new Set(
+        rawValues
+            .map(item => item?.toString().trim().toLowerCase())
+            .filter(item => COMPLAINT_CATEGORIES.includes(item))
+    )];
+};
+
+const normalizeAvailabilityStatus = (value) => {
+    const status = typeof value === "string" ? value.trim().toLowerCase() : "available";
+    return STAFF_AVAILABILITY_STATUSES.includes(status) ? status : "available";
+};
+
+const normalizeLoadLimit = (value) => {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
+};
 
 export const staffRegister = async (req, res) => {
     try {
         // 1. Get all data from request, including the OTP
-        const { name, email, password, phone, staffId, otp } = req.body;
+        const { name, email, password, phone, staffId, otp, issueCategories, availabilityStatus, maxActiveComplaints } = req.body;
 
         // 2. Update validation to require the OTP
         if (!name || !email || !password || !staffId || !otp) {
@@ -47,6 +72,10 @@ export const staffRegister = async (req, res) => {
         }
         // --- End of OTP Logic ---
 
+        const normalizedIssueCategories = normalizeCategoryList(issueCategories);
+        const normalizedAvailability = normalizeAvailabilityStatus(availabilityStatus);
+        const normalizedLoadLimit = normalizeLoadLimit(maxActiveComplaints);
+
         const existingStaff = await Staff.findOne({ $or: [{ email }, { staffId }] });
         if (existingStaff) {
             return res.status(400).json({
@@ -63,6 +92,9 @@ export const staffRegister = async (req, res) => {
             password: hashedPassword,
             phone,
             staffId,
+            issueCategories: normalizedIssueCategories,
+            availabilityStatus: normalizedAvailability,
+            maxActiveComplaints: normalizedLoadLimit,
             role: "staff"
         });
         
@@ -102,7 +134,10 @@ export const staffRegister = async (req, res) => {
                 name: newStaff.name,
                 role: newStaff.role,
                 staffId: newStaff.staffId,
-                email: newStaff.email
+                email: newStaff.email,
+                issueCategories: newStaff.issueCategories,
+                availabilityStatus: newStaff.availabilityStatus,
+                maxActiveComplaints: newStaff.maxActiveComplaints
             }
         });
         // --- END: Auto-Login Logic ---
@@ -215,7 +250,10 @@ export const staffLogin = async (req, res) => {
                 name: staff.name,
                 role: staff.role,
                 staffId: staff.staffId,
-                email: staff.email
+                email: staff.email,
+                issueCategories: staff.issueCategories,
+                availabilityStatus: staff.availabilityStatus,
+                maxActiveComplaints: staff.maxActiveComplaints
             }
         });
         

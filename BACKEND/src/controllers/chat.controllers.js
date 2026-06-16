@@ -17,10 +17,11 @@ const generateConversationId = (userId1, userId2, complaintId = null) => {
 export const sendMessage = asyncHandler(async (req, res) => {
     const { receiverId, message, messageType = "text", fileUrl, complaintId } = req.body;
     const senderId = req.user.id;
-    const senderModel = req.user.role === "admin" ? "Admin" : "Staff";
+    const senderRole = req.user.role || req.userType || "staff";
+    const senderModel = senderRole === "admin" ? "Admin" : "Staff";
 
     // ✅ Allow only Admin <-> Staff chats
-    if (req.user.role !== "admin" && req.user.role !== "staff") {
+    if (senderRole !== "admin" && senderRole !== "staff") {
         throw new ApiError(403, "Only Admin and Staff can use chat");
     }
 
@@ -28,7 +29,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Receiver ID and message are required");
     }
 
-    const receiverModel = req.user.role === "admin" ? "Staff" : "Admin";
+    const receiverModel = senderRole === "admin" ? "Staff" : "Admin";
     const conversationId = generateConversationId(senderId, receiverId, complaintId);
 
     const chatMessage = await ChatMessage.create({
@@ -40,7 +41,8 @@ export const sendMessage = asyncHandler(async (req, res) => {
         message,
         messageType,
         fileUrl,
-        complaintId: complaintId ? new mongoose.Types.ObjectId(complaintId) : null
+        complaintId: complaintId ? new mongoose.Types.ObjectId(complaintId) : null,
+        workspaceId: req.user.workspaceId || null
     });
 
     const populatedMessage = await ChatMessage.findById(chatMessage._id)

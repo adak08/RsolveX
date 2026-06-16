@@ -40,7 +40,17 @@ export const notificationAuth = async (req, res, next) => {
         req.actorRole = actorRole;
         next();
     } catch (error) {
-        console.error("Notification auth error:", error);
+        if (error?.name === "TokenExpiredError") {
+            return res.status(401).json({
+                success: false,
+                message: "Session expired. Please sign in again."
+            });
+        }
+
+        if (error?.name !== "JsonWebTokenError") {
+            console.error("Notification auth error:", error);
+        }
+
         res.status(401).json({
             success: false,
             message: "Unauthorized access."

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Routes, Route, Navigate } from 'react-router-dom';
-import { LayoutDashboard, AlertCircle, MessageSquare, User, LogOut, Briefcase, ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
+import { LayoutDashboard, AlertCircle, User, LogOut, Briefcase, ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from '../components/common/ThemeToggle';
@@ -8,13 +8,11 @@ import NotificationBell from '../components/common/NotificationBell';
 import { getInitials, avatarBg } from '../utils/helpers';
 import StaffDashboard from '../pages/staff/StaffDashboard';
 import StaffIssuesPage from '../pages/staff/StaffIssuesPage';
-import StaffChatPage from '../pages/staff/StaffChatPage';
 import StaffProfilePage from '../pages/staff/StaffProfilePage';
 
 const NAV = [
   { to: '/staff/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/staff/issues', icon: AlertCircle, label: 'My Issues' },
-  { to: '/staff/chat', icon: MessageSquare, label: 'Messages' },
   { to: '/staff/profile', icon: User, label: 'Profile' },
 ];
 
@@ -116,7 +114,6 @@ export default function StaffLayout() {
           <Routes>
             <Route path="dashboard" element={<StaffDashboard />} />
             <Route path="issues" element={<StaffIssuesPage />} />
-            <Route path="chat" element={<StaffChatPage />} />
             <Route path="profile" element={<StaffProfilePage />} />
             <Route path="*" element={<Navigate to="/staff/dashboard" />} />
           </Routes>

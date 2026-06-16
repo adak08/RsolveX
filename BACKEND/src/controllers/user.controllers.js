@@ -92,6 +92,7 @@ export const userSignup = async (req, res) => {
                 phone: newUser.phone,
                 address: newUser.address,
                 role: newUser.role,
+                workspaceId: newUser.workspaceId || null,
             }
         });
 
@@ -213,6 +214,7 @@ export const userLogin = async (req, res) => {
                 phone: user.phone,
                 address: user.address,
                 role: user.role,
+                workspaceId: user.workspaceId || null,
             },
         });
     }
@@ -261,6 +263,7 @@ export const refreshToken = async (req, res) => {
                 email: user.email,
                 phone: user.phone,
                 role: user.role
+                ,workspaceId: user.workspaceId || null,
             }
         });
     } catch (error) {
@@ -292,14 +295,24 @@ export const logout = (req, res) => {
 //controller for user_profile
 export const getUserProfile = async (req, res) => {
     try {
-        // The 'auth' middleware has already found the user and attached it to req.user.
-        // We just need to send it back. The password has already been removed by the middleware.
-        const user = req.user;
+        const user = await User.findById(req.user._id)
+            .select("-password")
+            .populate("workspaceId", "name workspaceCode type description isActive");
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        const userData = user.toObject();
+        const workspace = user.workspaceId && typeof user.workspaceId === "object" ? user.workspaceId : null;
+
+        userData.workspaceId = workspace?._id || userData.workspaceId || null;
+        userData.workspace = workspace;
 
         res.status(200).json({
             success: true,
             message: "Profile data fetched successfully",
-            data: user
+            data: userData
         });
 
     } catch (error) {
@@ -353,7 +366,8 @@ export const updateUserProfile = async (req, res) => {
                 phone: updatedUser.phone,
                 address: updatedUser.address,
                 profileImage: updatedUser.profileImage,
-                createdAt: updatedUser.createdAt
+                createdAt: updatedUser.createdAt,
+                workspaceId: updatedUser.workspaceId || null
             }
         });
 

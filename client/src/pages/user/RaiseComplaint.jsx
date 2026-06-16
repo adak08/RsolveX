@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, X, MapPin, CheckCircle, Navigation, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, X, MapPin, CheckCircle, Navigation, Loader2, AlertCircle, Building2, Hash } from 'lucide-react';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
 import { errMsg } from '../../utils/helpers';
 import { COMPLAINT_CATEGORIES } from '../../constants';
+import { useAuth } from '../../context/AuthContext';
 
 // ─── Reverse geocode via Nominatim (free, no API key needed) ──────────────────
 const reverseGeocode = async (lat, lng) => {
@@ -236,10 +237,13 @@ function LocationMap({ location, onChange }) {
 export default function RaiseComplaint() {
   const navigate  = useNavigate();
   const { toast } = useToast();
+  const { authStatus } = useAuth();
 
   const [form, setForm] = useState({
     title: '', description: '', category: '', customOtherLabel: '',
   });
+  const [workspace, setWorkspace] = useState(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(true);
   const [location,   setLocation]   = useState(null);
   const [images,     setImages]     = useState([]);
   const [previews,   setPreviews]   = useState([]);
@@ -253,8 +257,25 @@ export default function RaiseComplaint() {
     setFieldErrors(p => ({ ...p, [k]: '' }));
   };
 
+  useEffect(() => {
+    const loadWorkspace = async () => {
+      try {
+        const res = await api.get('/api/users/profile');
+        const user = res.data?.data || res.data;
+        setWorkspace(user.workspace || null);
+      } catch {
+        setWorkspace(null);
+      } finally {
+        setWorkspaceLoading(false);
+      }
+    };
+
+    loadWorkspace();
+  }, [authStatus.userData?._id]);
+
   const validate = () => {
     const errs = {};
+    if (!workspace) errs.workspace = 'Join a workspace in your profile before filing a complaint.';
     if (!form.title.trim() || form.title.trim().length < 5)
       errs.title = 'Title must be at least 5 characters.';
     if (!form.description.trim() || form.description.trim().length < 10)
@@ -364,6 +385,42 @@ export default function RaiseComplaint() {
       </div>
 
       <div className="card space-y-5">
+
+        {/* Workspace */}
+        <div>
+          <label className="text-sm font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            Complaint Workspace <span className="text-red-500">*</span>
+          </label>
+
+          {workspaceLoading ? (
+            <div className="rounded-xl p-4" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading workspace…</p>
+            </div>
+          ) : workspace ? (
+            <div className="rounded-xl p-4 flex items-center gap-3" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+              <Building2 size={18} style={{ color: 'var(--accent)' }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{workspace.name}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Workspace code: {workspace.workspaceCode}</p>
+              </div>
+              <select className="input py-2 text-sm w-auto min-w-44" value={workspace._id || ''} disabled>
+                <option value={workspace._id || ''}>{workspace.name}</option>
+              </select>
+            </div>
+          ) : (
+            <div className="rounded-xl p-4 space-y-3" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                You are not part of any workspace yet. Join one from your profile first, then return here to file a complaint.
+              </p>
+              {fieldErrors.workspace && (
+                <p className="text-xs text-red-500">{fieldErrors.workspace}</p>
+              )}
+              <button type="button" onClick={() => navigate('/home/profile')} className="btn-secondary text-sm">
+                Go to Profile
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Title */}
         <div>
@@ -519,7 +576,7 @@ export default function RaiseComplaint() {
         <button
           type="button"
           onClick={submit}
-          disabled={submitting || uploading}
+          disabled={submitting || uploading || !workspace}
           className="btn-primary w-full justify-center py-3 text-base disabled:opacity-50 flex items-center gap-2"
         >
           {submitting && <Loader2 size={16} className="animate-spin" />}

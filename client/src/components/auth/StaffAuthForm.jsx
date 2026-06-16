@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, User, Hash, Phone, KeyRound, ArrowRight } from 'lucide-react';
 import api from '../../api/axios';
 import { errMsg } from '../../utils/helpers';
+import { COMPLAINT_CATEGORIES } from '../../constants';
 
 export default function StaffAuthForm({ onSuccess }) {
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({
     name: '', email: '', password: '', phone: '', staffId: '', workspaceCode: '', otp: '',
+    issueCategories: [], availabilityStatus: 'available',
   });
   const [showPw, setShowPw]         = useState(false);
   const [otpSent, setOtpSent]       = useState(false); // login OTP flow
@@ -17,6 +19,15 @@ export default function StaffAuthForm({ onSuccess }) {
   const [regTimer, setRegTimer]     = useState(0);
 
   const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }));
+
+  const toggleCategory = (categoryId) => {
+    setForm(prev => ({
+      ...prev,
+      issueCategories: prev.issueCategories.includes(categoryId)
+        ? prev.issueCategories.filter(item => item !== categoryId)
+        : [...prev.issueCategories, categoryId],
+    }));
+  };
 
   const startTimer = (setter) => {
     setter(60);
@@ -94,6 +105,8 @@ export default function StaffAuthForm({ onSuccess }) {
         phone:    form.phone,
         staffId:  form.staffId,
         otp:      form.otp,
+        issueCategories: form.issueCategories,
+        availabilityStatus: form.availabilityStatus,
       });
       localStorage.setItem('staffToken', res.data.accessToken);
       localStorage.setItem('staffData', JSON.stringify(res.data.staff));
@@ -210,6 +223,32 @@ export default function StaffAuthForm({ onSuccess }) {
             <div className="relative">
               <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
               <input className="input pl-10" placeholder="Workspace code (from admin)" value={form.workspaceCode} onChange={f('workspaceCode')} />
+            </div>
+            <div className="space-y-2 rounded-xl p-3" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Issue categories you handle</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Leave all unchecked to stay generalist.</p>
+              <div className="grid grid-cols-2 gap-2">
+                {COMPLAINT_CATEGORIES.map(cat => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => toggleCategory(cat.id)}
+                    className={`px-3 py-2 rounded-lg text-sm text-left border transition-all ${form.issueCategories.includes(cat.id) ? 'bg-orange-100 dark:bg-orange-900/30 border-orange-300 text-orange-700' : 'bg-transparent'}`}
+                    style={{ borderColor: form.issueCategories.includes(cat.id) ? 'var(--accent)' : 'var(--border)', color: form.issueCategories.includes(cat.id) ? 'var(--accent)' : 'var(--text-secondary)' }}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-2 block" style={{ color: 'var(--text-muted)' }}>Availability</label>
+              <select className="input" value={form.availabilityStatus} onChange={f('availabilityStatus')}>
+                <option value="available">Available</option>
+                <option value="busy">Busy</option>
+                <option value="offline">Offline</option>
+                <option value="on-leave">On leave</option>
+              </select>
             </div>
           </div>
 

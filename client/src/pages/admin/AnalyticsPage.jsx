@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, RefreshCw, TrendingUp, Users, CheckCircle, Clock } from 'lucide-react';
+import { Download, FileText, RefreshCw, TrendingUp, Users, CheckCircle, Clock } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -29,6 +29,8 @@ export default function AnalyticsPage() {
   const [range, setRange] = useState('30');
   const [exporting, setExporting] = useState(false);
   const [perfData, setPerfData] = useState([]);
+  const [chartView, setChartView] = useState('trend');
+  const [trendStyle, setTrendStyle] = useState('area');
 
   const load = async () => {
     setLoading(true);
@@ -63,15 +65,27 @@ export default function AnalyticsPage() {
 
   useEffect(() => { load(); }, [range]);
 
-  const handleExport = async () => {
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExport = async (format = 'csv') => {
     setExporting(true);
     try {
-      const res = await api.get('/api/admin/analytics/export', { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement('a');
-      a.href = url; a.download = `resolvex-analytics-${Date.now()}.csv`; a.click();
-      window.URL.revokeObjectURL(url);
-      toast('Export downloaded', 'success');
+      const res = await api.get('/api/admin/analytics/export', {
+        params: { format, period: range },
+        responseType: 'blob'
+      });
+      downloadBlob(
+        new Blob([res.data], { type: format === 'pdf' ? 'application/pdf' : 'text/csv' }),
+        `resolvex-analytics-${Date.now()}.${format}`
+      );
+      toast(`${format.toUpperCase()} export downloaded`, 'success');
     } catch (e) { toast('Export failed', 'error'); }
     finally { setExporting(false); }
   };
@@ -85,7 +99,90 @@ export default function AnalyticsPage() {
   }));
   const byCategory = data?.byCategory || [];
   const byPriority = data?.byPriority || [];
+  const byStatus = data?.byStatus || [];
   const heatmap = data?.heatmap || [];
+  const chartTabs = [
+    { id: 'trend', label: 'Trend' },
+    { id: 'category', label: 'Category' },
+    { id: 'priority', label: 'Priority' },
+    { id: 'status', label: 'Status' },
+  ];
+
+  const renderInteractiveChart = () => {
+    if (chartView === 'trend') {
+      return trendStyle === 'area' ? (
+        <ResponsiveContainer width="100%" height={240}>
+          <AreaChart data={daily}>
+            <defs>
+              <linearGradient id="trendComplaints" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f97316" stopOpacity={0.28} /><stop offset="95%" stopColor="#f97316" stopOpacity={0} /></linearGradient>
+              <linearGradient id="trendResolved" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.28} /><stop offset="95%" stopColor="#22c55e" stopOpacity={0} /></linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+            <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+            <Tooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 12 }} />
+            <Legend />
+            <Area type="monotone" dataKey="complaints" stroke="#f97316" strokeWidth={2} fill="url(#trendComplaints)" name="New Complaints" />
+            <Area type="monotone" dataKey="resolved" stroke="#22c55e" strokeWidth={2} fill="url(#trendResolved)" name="Resolved" />
+          </AreaChart>
+        </ResponsiveContainer>
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={daily}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+            <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+            <Tooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 12 }} />
+            <Legend />
+            <Bar dataKey="complaints" fill="#f97316" radius={[6, 6, 0, 0]} name="New Complaints" />
+            <Bar dataKey="resolved" fill="#22c55e" radius={[6, 6, 0, 0]} name="Resolved" />
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    if (chartView === 'category') {
+      return (
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={byCategory} layout="vertical">
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={90} />
+            <Tooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 12 }} />
+            <Bar dataKey="value" fill="#f97316" radius={[0, 8, 8, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    if (chartView === 'priority') {
+      return (
+        <ResponsiveContainer width="100%" height={240}>
+          <PieChart>
+            <Pie data={byPriority} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={5} dataKey="value" nameKey="name">
+              {byPriority.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+            </Pie>
+            <Tooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 12 }} />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    return (
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart data={byStatus}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+          <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+          <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+          <Tooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 12 }} />
+          <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+            {byStatus.map((entry, index) => <Cell key={entry.name || index} fill={COLORS[index % COLORS.length]} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -101,8 +198,11 @@ export default function AnalyticsPage() {
               {r}d
             </button>
           ))}
-          <button onClick={handleExport} disabled={exporting} className="btn-secondary gap-2">
+          <button onClick={() => handleExport('csv')} disabled={exporting} className="btn-secondary gap-2">
             <Download size={14} /> {exporting ? 'Exporting…' : 'Export CSV'}
+          </button>
+          <button onClick={() => handleExport('pdf')} disabled={exporting} className="btn-secondary gap-2">
+            <FileText size={14} /> {exporting ? 'Exporting…' : 'Export PDF'}
           </button>
           <button onClick={load} className="btn-secondary"><RefreshCw size={14} /></button>
         </div>
@@ -116,52 +216,60 @@ export default function AnalyticsPage() {
         <StatPill label="Active Users" value={stats.activeUsers || 0} icon={Users} color="bg-violet-500" />
       </div>
 
-      {/* Trend chart */}
+      {/* Interactive charts */}
       <div className="card">
-        <h2 className="font-display font-600 text-base mb-4" style={{ color: 'var(--text-primary)' }}>Daily Trend ({range} days)</h2>
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={daily}>
-            <defs>
-              <linearGradient id="gc1" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f97316" stopOpacity={0.2} /><stop offset="95%" stopColor="#f97316" stopOpacity={0} /></linearGradient>
-              <linearGradient id="gc2" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} /><stop offset="95%" stopColor="#22c55e" stopOpacity={0} /></linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
-            <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
-            <Tooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 12 }} />
-            <Legend />
-            <Area type="monotone" dataKey="complaints" stroke="#f97316" strokeWidth={2} fill="url(#gc1)" name="New Complaints" />
-            <Area type="monotone" dataKey="resolved" stroke="#22c55e" strokeWidth={2} fill="url(#gc2)" name="Resolved" />
-          </AreaChart>
-        </ResponsiveContainer>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="font-display font-600 text-base" style={{ color: 'var(--text-primary)' }}>Interactive Overview</h2>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Switch between trend, category, priority, and status views.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <div className="inline-flex rounded-xl p-1" style={{ background: 'var(--bg-tertiary)' }}>
+              {chartTabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setChartView(tab.id)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${chartView === tab.id ? 'bg-white dark:bg-[var(--bg-secondary)] shadow-sm' : ''}`}
+                  style={{ color: chartView === tab.id ? 'var(--accent)' : 'var(--text-muted)' }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            {chartView === 'trend' && (
+              <div className="inline-flex rounded-xl p-1" style={{ background: 'var(--bg-tertiary)' }}>
+                {['area', 'bar'].map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => setTrendStyle(mode)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${trendStyle === mode ? 'bg-white dark:bg-[var(--bg-secondary)] shadow-sm' : ''}`}
+                    style={{ color: trendStyle === mode ? 'var(--accent)' : 'var(--text-muted)' }}
+                  >
+                    {mode === 'area' ? 'Area' : 'Bar'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        {renderInteractiveChart()}
       </div>
 
-      {/* Category & Priority charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="card">
-          <h2 className="font-display font-600 text-base mb-4" style={{ color: 'var(--text-primary)' }}>By Category</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={byCategory} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
-              <YAxis type="category" dataKey="_id" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={80} />
-              <Tooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12 }} />
-              <Bar dataKey="count" fill="#f97316" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <p className="text-xs uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>Top category</p>
+          <p className="font-display font-700 text-xl" style={{ color: 'var(--text-primary)' }}>{byCategory[0]?.name || '—'}</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{byCategory[0]?.value || 0} complaints</p>
         </div>
-
         <div className="card">
-          <h2 className="font-display font-600 text-base mb-4" style={{ color: 'var(--text-primary)' }}>By Priority</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie data={byPriority} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="count" nameKey="_id">
-                {byPriority.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
-              <Tooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12 }} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          <p className="text-xs uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>Most active status</p>
+          <p className="font-display font-700 text-xl" style={{ color: 'var(--text-primary)' }}>{byStatus[0]?.name || '—'}</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{byStatus[0]?.value || 0} complaints</p>
+        </div>
+        <div className="card">
+          <p className="text-xs uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>Top staff</p>
+          <p className="font-display font-700 text-xl" style={{ color: 'var(--text-primary)' }}>{perfData[0]?.name || '—'}</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{perfData[0]?.assigned || perfData[0]?.totalAssigned || 0} assigned</p>
         </div>
       </div>
 

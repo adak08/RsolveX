@@ -33,8 +33,13 @@ export const chatAuth = async (req, res, next) => {
             });
         }
 
+        const userDoc = user.toObject ? user.toObject() : user;
+
         // Add user and type to request
-        req.user = user;
+        req.user = {
+            ...userDoc,
+            role: userType
+        };
         req.userType = userType;
 
         console.log(`Chat Auth - ${userType.toUpperCase()} authenticated:`, user.name);

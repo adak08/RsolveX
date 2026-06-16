@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Search, Filter } from 'lucide-react';
+import { RefreshCw, Search, Filter, ChevronDown, ChevronUp, User, ClipboardList, AlertCircle } from 'lucide-react';
 import api from '../../api/axios';
 import Loader from '../../components/common/Loader';
 import { formatDateTime } from '../../utils/helpers';
@@ -21,6 +21,7 @@ export default function AuditLogsPage() {
   const [total, setTotal] = useState(0);
   const [action, setAction] = useState('');
   const [actor, setActor] = useState('');
+  const [expandedId, setExpandedId] = useState('');
   const LIMIT = 25;
 
   const load = async () => {
@@ -37,6 +38,30 @@ export default function AuditLogsPage() {
   };
 
   useEffect(() => { load(); }, [page, action, actor]);
+
+  const actionMeta = (actionValue) => {
+    if (actionValue?.includes('created')) return { tone: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600', label: 'Created' };
+    if (actionValue?.includes('assigned')) return { tone: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600', label: 'Assigned' };
+    if (actionValue?.includes('updated')) return { tone: 'bg-violet-100 dark:bg-violet-900/30 text-violet-600', label: 'Updated' };
+    if (actionValue?.includes('resolved')) return { tone: 'bg-green-100 dark:bg-green-900/30 text-green-600', label: 'Resolved' };
+    if (actionValue?.includes('rejected')) return { tone: 'bg-red-100 dark:bg-red-900/30 text-red-600', label: 'Rejected' };
+    if (actionValue?.includes('workspace')) return { tone: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600', label: 'Workspace' };
+    return { tone: 'bg-gray-100 text-gray-600', label: 'Action' };
+  };
+
+  const renderMetadata = (metadata = []) => {
+    if (!metadata.length) return null;
+    return (
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 mt-3">
+        {metadata.map(item => (
+          <div key={item.key} className="rounded-xl px-3 py-2" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+            <p className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{item.label}</p>
+            <p className="text-sm font-medium mt-0.5 break-words" style={{ color: 'var(--text-primary)' }}>{item.value || '—'}</p>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -76,22 +101,46 @@ export default function AuditLogsPage() {
               <p className="font-display font-600" style={{ color: 'var(--text-primary)' }}>No audit logs</p>
             </div>
           ) : logs.map(l => {
-            const colorClass = Object.entries(ACTION_COLORS).find(([k]) => l.action?.includes(k.split('.')[1]))?.[1] || 'bg-gray-100 text-gray-600';
+            const meta = actionMeta(l.action);
+            const isOpen = expandedId === l._id;
             return (
-              <div key={l._id} className="card py-3 px-4 flex items-start gap-4">
-                <div className="w-2 h-2 mt-2 rounded-full bg-orange-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-xs px-2 py-0.5 rounded-lg font-mono font-medium ${colorClass}`}>{l.action}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-lg" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}>{l.actorModel}</span>
+              <div key={l._id} className="card py-3 px-4">
+                <button
+                  className="w-full flex items-start gap-4 text-left"
+                  onClick={() => setExpandedId(isOpen ? '' : l._id)}
+                >
+                  <div className={`w-2.5 h-2.5 mt-2 rounded-full shrink-0 ${l.actorModel === 'Admin' ? 'bg-orange-400' : l.actorModel === 'Staff' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-xs px-2 py-0.5 rounded-lg font-mono font-medium ${meta.tone}`}>{l.action}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-lg inline-flex items-center gap-1" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}>
+                        <User size={12} /> {l.actorName || l.actorModel}
+                      </span>
+                      {l.summary && (
+                        <span className="text-xs px-2 py-0.5 rounded-lg inline-flex items-center gap-1" style={{ background: 'var(--bg-secondary)', color: 'var(--text-muted)' }}>
+                          <ClipboardList size={12} /> {l.summary}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {l.targetName && <span className="px-2 py-0.5 rounded-md" style={{ background: 'var(--bg-secondary)' }}>Target: {l.targetName}</span>}
+                      {l.targetModel && <span className="px-2 py-0.5 rounded-md" style={{ background: 'var(--bg-secondary)' }}>{l.targetModel}</span>}
+                    </div>
                   </div>
-                  {l.metadata && (
-                    <p className="text-xs mt-1 font-mono" style={{ color: 'var(--text-muted)' }}>
-                      {Object.entries(l.metadata).map(([k, v]) => `${k}: ${v}`).join(' | ')}
-                    </p>
-                  )}
-                </div>
-                <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>{formatDateTime(l.createdAt)}</span>
+                  <div className="flex items-center gap-2 shrink-0" style={{ color: 'var(--text-muted)' }}>
+                    <span className="text-xs">{formatDateTime(l.createdAt)}</span>
+                    {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </div>
+                </button>
+
+                {isOpen && (
+                  <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                    <div className="flex items-center gap-2 text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                      <AlertCircle size={12} /> Details
+                    </div>
+                    {renderMetadata(l.metadata)}
+                  </div>
+                )}
               </div>
             );
           })}

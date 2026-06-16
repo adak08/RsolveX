@@ -201,7 +201,7 @@ export default function UserAuthForm({ onSuccess }) {
             </div>
             <div className="relative">
               <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-              <input className="input pl-10" placeholder="Workspace code (optional)" value={form.workspaceCode} onChange={f('workspaceCode')} />
+              <input className="input pl-10" placeholder="Workspace code (optional - you can join later in Profile)" value={form.workspaceCode} onChange={f('workspaceCode')} />
             </div>
           </div>
 

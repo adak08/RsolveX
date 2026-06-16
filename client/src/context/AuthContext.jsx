@@ -21,12 +21,13 @@ const getSocketSvc = () =>
     .then((m) => m.default)
     .catch(() => null);
 
-const initSocket = async (token, userId) => {
+const initSocket = async (token, userId, workspaceId) => {
   const svc = await getSocketSvc();
   if (!svc) return;
   try {
     svc.init(token);
     if (userId) svc.join(userId);
+    if (workspaceId) svc.joinWorkspace(workspaceId);
   } catch (e) {
     console.warn('Socket init failed:', e.message);
   }
@@ -59,6 +60,8 @@ export const AuthProvider = ({ children }) => {
     const staffData = safeParseJSON(localStorage.getItem('staffData'));
     const userData  = safeParseJSON(localStorage.getItem('user'));
 
+    const getWorkspaceId = (data) => data?.workspaceId?._id || data?.workspaceId || null;
+
     if (adminToken && adminData) {
       setAuthStatus({
         isAuthenticated: true,
@@ -66,7 +69,7 @@ export const AuthProvider = ({ children }) => {
         userName:  adminData.name || 'Admin',
         userData:  adminData,
       });
-      initSocket(adminToken, adminData._id);
+      initSocket(adminToken, adminData._id, getWorkspaceId(adminData));
 
     } else if (staffToken && staffData) {
       setAuthStatus({
@@ -75,7 +78,7 @@ export const AuthProvider = ({ children }) => {
         userName:  staffData.name || 'Staff',
         userData:  staffData,
       });
-      initSocket(staffToken, staffData._id);
+      initSocket(staffToken, staffData._id, getWorkspaceId(staffData));
 
     } else if (userToken && userData) {
       setAuthStatus({
@@ -84,7 +87,7 @@ export const AuthProvider = ({ children }) => {
         userName:  userData.name || 'User',
         userData:  userData,
       });
-      initSocket(userToken, userData._id);
+      initSocket(userToken, userData._id, getWorkspaceId(userData));
 
     } else {
       // Nothing valid in storage — clear any stale/corrupt keys

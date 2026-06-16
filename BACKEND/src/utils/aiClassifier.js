@@ -1,11 +1,12 @@
 // utils/aiClassifier.js
 // Uses Google Gemini to classify complaint category and priority
 // Called when user selects "other" category and provides a custom description
+import { COMPLAINT_CATEGORIES } from "../constants.js";
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 // Valid values in our system
-const VALID_CATEGORIES = ["road", "water", "electricity", "sanitation", "other"];
+const VALID_CATEGORIES = COMPLAINT_CATEGORIES;
 const VALID_PRIORITIES = ["low", "medium", "high", "critical"];
 
 // Fallback if Gemini is unavailable or returns garbage
@@ -117,9 +118,9 @@ Respond ONLY in this exact JSON format (no markdown, no extra text):
 
 const parseGeminiResponse = (rawText) => {
     try {
-        // Strip any accidental markdown fences if present
         const cleaned = rawText.replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(cleaned);
+        const jsonText = extractJsonObject(cleaned);
+        const parsed = JSON.parse(jsonText);
 
         const category = VALID_CATEGORIES.includes(parsed.category)
             ? parsed.category
@@ -141,6 +142,17 @@ const parseGeminiResponse = (rawText) => {
         console.error("Failed to parse Gemini response:", rawText, error.message);
         return FALLBACK_RESULT;
     }
+};
+
+const extractJsonObject = (text) => {
+    const firstBrace = text.indexOf("{");
+    const lastBrace = text.lastIndexOf("}");
+
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        return text.slice(firstBrace, lastBrace + 1).trim();
+    }
+
+    return text.trim();
 };
 
 /**

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { COMPLAINT_CATEGORIES, STAFF_AVAILABILITY_STATUSES } from "../constants.js";
 
 const staffSchema= new mongoose.Schema({
     name:{
@@ -30,6 +31,20 @@ const staffSchema= new mongoose.Schema({
         type:mongoose.Schema.Types.ObjectId,
         ref:"Department"
     },
+    issueCategories: [{
+        type: String,
+        enum: COMPLAINT_CATEGORIES
+    }],
+    availabilityStatus: {
+        type: String,
+        enum: STAFF_AVAILABILITY_STATUSES,
+        default: "available"
+    },
+    maxActiveComplaints: {
+        type: Number,
+        default: 5,
+        min: 1
+    },
     profileImage:{
         type:String
     },
@@ -49,5 +64,7 @@ const staffSchema= new mongoose.Schema({
 
 staffSchema.index({ workspaceId: 1 });
 staffSchema.index({ workspaceId: 1, isActive: 1 });
+staffSchema.index({ workspaceId: 1, availabilityStatus: 1, isActive: 1 });
+staffSchema.index({ workspaceId: 1, issueCategories: 1 });
 
 export default mongoose.model("Staff",staffSchema);
