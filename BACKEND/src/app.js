@@ -43,7 +43,7 @@ const server = createServer(app);
 
 // ─── Trust Proxy (Fix for Render) ─────────────────────────────────────────────
 // Needed for rate limiting and IP-based features to work correctly on Render
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 // ─── HTTPS Redirect (Production) ─────────────────────────────────────────────
 if (process.env.NODE_ENV === "production") {
