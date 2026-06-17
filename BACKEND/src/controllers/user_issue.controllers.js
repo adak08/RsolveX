@@ -16,12 +16,14 @@ export const handleAllIssueFetch = async (req, res) => {
             "Closed": ["resolved", "rejected"]
         };
 
-        let filter = {};
-
-        // Workspace scope — only show complaints from this workspace
-        if (req.workspaceId) {
-            filter.workspaceId = req.workspaceId;
+        if (!req.workspaceId) {
+        return res.status(403).json({
+            success: false,
+            message: "You must be part of a workspace to view complaints"
+            });
         }
+    
+        let filter = { workspaceId: req.workspaceId };
 
         if (status && status !== "All") {
             if (status === "Closed") {

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
+import { setupCSRF } from './api/axios';
 
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -102,6 +103,10 @@ function AppRoutes() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Fetch the CSRF token as soon as the app mounts
+    setupCSRF();
+  }, []);
   return (
     <BrowserRouter>
       <ThemeProvider>

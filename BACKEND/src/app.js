@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
+import csrf from "csurf";
 
 import userRoutes from "./routes/user.routes.js";
 import staffRoutes from "./routes/staf.routes.js";
@@ -26,6 +27,16 @@ import { otpLimiter, loginLimiter, generalLimiter } from "./middleware/rateLimit
 
 const app = express();
 const server = createServer(app);
+
+if (process.env.NODE_ENV === "production") {
+    app.use((req, res, next) => {
+        if (req.header('x-forwarded-proto') !== 'https') {
+            res.redirect(`https://${req.header('host')}${req.url}`);
+        } else {
+            next();
+        }
+    });
+}
 
 // ─── Security Headers ─────────────────────────────────────────────────────────
 app.use(helmet());
@@ -74,14 +85,33 @@ app.use(cors({
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"]
 }));
 
 app.options(/.*/, cors());
 
 app.use(cookieParser());
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+app.use("/api/upload", express.json({ limit: "10mb" }));
+app.use("/api/users", express.json({ limit: "1mb" }));
+app.use("/api/complaints", express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "1mb" })); // Default
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+const csrfProtection = csrf({ 
+    cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production" || process.env.FORCE_HTTPS === "true",
+        sameSite: "strict"
+    } 
+});
+
+app.get("/api/csrf-token", csrfProtection, (req, res) => {
+    res.json({ csrfToken: req.csrfToken() });
+});
+
+app.use(csrfProtection);
+
 
 // ─── General Rate Limit ───────────────────────────────────────────────────────
 app.use(generalLimiter);
@@ -184,6 +214,13 @@ io.on("connection", (socket) => {
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
     console.error("Error:", err.message);
+
+    if (err.code === 'EBADCSRFTOKEN') {
+        return res.status(403).json({
+            success: false,
+            message: "Invalid or missing CSRF token. Please refresh the page."
+        });
+    }
 
     if (err.code === "LIMIT_FILE_SIZE") {
         return res.status(413).json({

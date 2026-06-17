@@ -18,18 +18,34 @@ export const sendMessage = asyncHandler(async (req, res) => {
     const { receiverId, message, messageType = "text", fileUrl, complaintId } = req.body;
     const senderId = req.user.id;
     const senderRole = req.user.role || req.userType || "staff";
-    const senderModel = senderRole === "admin" ? "Admin" : "Staff";
+    const workspaceId = req.user.workspaceId;
 
-    // ✅ Allow only Admin <-> Staff chats
+    // Validate role
     if (senderRole !== "admin" && senderRole !== "staff") {
         throw new ApiError(403, "Only Admin and Staff can use chat");
     }
 
-    if (!receiverId || !message) {
-        throw new ApiError(400, "Receiver ID and message are required");
+    // Validate receiverId exists and is in same workspace
+    const receiver = await (senderRole === "admin" ? Staff : Admin).findOne({
+        _id: receiverId,
+        workspaceId
+    });
+
+    if (!receiver) {
+        throw new ApiError(404, "Receiver not found in this workspace");
     }
 
-    const receiverModel = senderRole === "admin" ? "Staff" : "Admin";
+    // Validate complaintId if provided
+    if (complaintId) {
+        const complaint = await UserComplaint.findOne({
+            _id: complaintId,
+            workspaceId
+        });
+        if (!complaint) {
+            throw new ApiError(403, "Cannot access this complaint");
+        }
+    }
+
     const conversationId = generateConversationId(senderId, receiverId, complaintId);
 
     const chatMessage = await ChatMessage.create({

@@ -119,7 +119,7 @@ export const staffRegister = async (req, res) => {
         // 3. Set the refresh token as a secure cookie
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: process.env.NODE_ENV === "production"|| process.env.FORCE_HTTPS === "true",
             sameSite: "strict",
             maxAge: 7 * 24 * 60 * 60 * 1000, 
         });
@@ -235,7 +235,7 @@ export const staffLogin = async (req, res) => {
         
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: process.env.NODE_ENV === "production"|| process.env.FORCE_HTTPS === "true",
             sameSite: "strict",
             maxAge: 7 * 24 * 60 * 60 * 1000, 
         });

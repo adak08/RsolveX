@@ -76,7 +76,7 @@ export const userSignup = async (req, res) => {
         // 11. Send refresh token as a cookie (from old controller)
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: process.env.NODE_ENV === "production" || process.env.FORCE_HTTPS === "true",
             sameSite: "strict",
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
@@ -101,71 +101,6 @@ export const userSignup = async (req, res) => {
         res.status(500).json({ message: "Server Error" });
     }
 };
-// export const userSignup = async (req, res) => {
-//     try {
-//         const { name, email, password, phone, street, city, state, pincode } = req.body;
-
-//         if (!name || !email || !password || !phone) {
-//             return res.status(400).json({ message: "Please fill all required fields: name, email, password, phone." });
-//         }
-
-//         //Check if user already exists
-//         const existingUser = await User.findOne({ email });
-//         if (existingUser) {
-//             return res.status(400).json({ message: "Email already registered" });
-//         }
-
-//         //Hash Password
-//         const hashedPassword = await bcrypt.hash(password, 10);
-//         //create newUser
-//         const newUser = new User({
-//             name,
-//             email,
-//             password: hashedPassword,
-//             phone,
-//             address: {
-//                 street,
-//                 city,
-//                 state,
-//                 pincode,
-//             },
-//         });
-
-//         await newUser.save();
-//         // Generate tokens after signup
-//         const payload = { id: newUser._id, role: newUser.role || "user" };
-//         const accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "15m" });
-//         const refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
-
-//         // Send refresh token as cookie
-//         res.cookie("refreshToken", refreshToken, {
-//             httpOnly: true,
-//             secure: process.env.NODE_ENV === "production",
-//             sameSite: "strict",
-//             maxAge: 7 * 24 * 60 * 60 * 1000,
-//         });
-
-//         res.status(201).json({
-//             message: "User registered successfully",
-//             accessToken, // ← ADD THIS
-//             user: { // ← ADD THIS
-//                 id: newUser._id,
-//                 name: newUser.name,
-//                 email: newUser.email,
-//                 phone: newUser.phone,
-//                 address: newUser.address,
-//                 role: newUser.role,
-//             }
-//         });
-//     }
-//     catch (err) {
-//         console.error("User Signup Error: ", err);
-//         if (err.name === 'ValidationError') {
-//             return res.status(400).json({ message: err.message || "Validation failed for one or more fields." });
-//         }
-//         res.status(500).json({ message: "Server Error" });
-//     }
-// };
 
 
 
@@ -199,7 +134,7 @@ export const userLogin = async (req, res) => {
         //Send refresh token as HttpOnly cookie
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: process.env.NODE_ENV === "production" || process.env.FORCE_HTTPS === "true",
             sameSite: "strict",
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
