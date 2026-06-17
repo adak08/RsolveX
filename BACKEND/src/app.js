@@ -41,6 +41,10 @@ const PUBLIC_DIR = path.join(__dirname, "..", "public");
 const app = express();
 const server = createServer(app);
 
+// ─── Trust Proxy (Fix for Render) ─────────────────────────────────────────────
+// Needed for rate limiting and IP-based features to work correctly on Render
+app.set('trust proxy', true);
+
 // ─── HTTPS Redirect (Production) ─────────────────────────────────────────────
 if (process.env.NODE_ENV === "production") {
     app.use((req, res, next) => {
@@ -60,35 +64,35 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: [
-                "'self'", 
+                "'self'",
                 "'unsafe-inline'",
                 "https://unpkg.com",
                 "https://*.leafletjs.com"
             ],
             styleSrc: [
-                "'self'", 
+                "'self'",
                 "'unsafe-inline'",
                 "https://fonts.googleapis.com",
                 "https://unpkg.com",
                 "https://*.leafletjs.com"
             ],
             imgSrc: [
-                "'self'", 
-                "data:", 
+                "'self'",
+                "data:",
                 "https://res.cloudinary.com",
                 "https://unpkg.com",
                 "https://*.leafletjs.com",
                 "https://*.tile.openstreetmap.org"
             ],
             connectSrc: [
-                "'self'", 
-                "wss://*.onrender.com", 
+                "'self'",
+                "wss://*.onrender.com",
                 "https://*.onrender.com",
                 "https://unpkg.com",
                 ...(isDevelopment ? ["http://localhost:3000", "http://localhost:5173", "ws://localhost:5173", "ws://127.0.0.1:5173"] : [])
             ],
             fontSrc: [
-                "'self'", 
+                "'self'",
                 "data:",
                 "https://fonts.gstatic.com"
             ],
@@ -107,17 +111,17 @@ const io = new Server(server, {
         origin: function (origin, callback) {
             // Allow requests with no origin (like mobile apps or curl)
             if (!origin) return callback(null, true);
-            
+
             // Allow localhost for development
             if (/^https?:\/\/localhost:\d+$/.test(origin) || origin === 'http://127.0.0.1:5500' || origin === 'http://127.0.0.1:3000' || origin === 'http://127.0.0.1:5173') {
                 return callback(null, true);
             }
-            
+
             // Allow all Render domains securely
             if (/^https:\/\/[a-zA-Z0-9-]+\.onrender\.com$/.test(origin)) {
                 return callback(null, true);
             }
-            
+
             // Allow specific origins (keep existing)
             const allowedOrigins = [
                 "http://127.0.0.1:5500",
@@ -128,11 +132,11 @@ const io = new Server(server, {
                 "http://127.0.0.1:5173",
                 "https://adak08.github.io"
             ];
-            
+
             if (allowedOrigins.indexOf(origin) !== -1) {
                 return callback(null, true);
             }
-            
+
             callback(new Error('Not allowed by CORS'));
         },
         methods: ["GET", "POST"],
@@ -150,17 +154,17 @@ global.io = io;
 app.use(cors({
     origin: function (origin, callback) {
         if (!origin) return callback(null, true);
-        
+
         // Allow localhost for development
         if (/^https?:\/\/localhost:\d+$/.test(origin) || origin === 'http://127.0.0.1:5500' || origin === 'http://127.0.0.1:3000' || origin === 'http://127.0.0.1:5173') {
             return callback(null, true);
         }
-        
+
         // Allow all Render domains securely
         if (/^https:\/\/[a-zA-Z0-9-]+\.onrender\.com$/.test(origin)) {
             return callback(null, true);
         }
-        
+
         // Allow specific origins
         const allowedOrigins = [
             "http://127.0.0.1:5500",
@@ -171,7 +175,7 @@ app.use(cors({
             "http://127.0.0.1:5173",
             "https://adak08.github.io"
         ];
-        
+
         if (allowedOrigins.indexOf(origin) === -1) {
             const msg = "The CORS policy for this site does not allow access from the specified Origin.";
             return callback(new Error(msg), false);
@@ -196,12 +200,12 @@ app.use(express.json({ limit: "2mb" })); // Default for other routes
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 // ─── CSRF Protection ──────────────────────────────────────────────────────────
-const csrfProtection = csrf({ 
+const csrfProtection = csrf({
     cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production" || process.env.FORCE_HTTPS === "true",
         sameSite: "strict"
-    } 
+    }
 });
 
 // CSRF token endpoint (public)
@@ -264,8 +268,8 @@ app.use("/api/audit", auditRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
-    res.json({ 
-        status: "ok", 
+    res.json({
+        status: "ok",
         message: "Server is running healthy",
         environment: process.env.NODE_ENV,
         timestamp: new Date().toISOString()
@@ -282,9 +286,9 @@ app.use(express.static(PUBLIC_DIR));
 app.get(/.*/, (req, res) => {
     // Skip API routes — return 404 JSON instead of the SPA shell
     if (req.path.startsWith("/api/")) {
-        return res.status(404).json({ 
+        return res.status(404).json({
             success: false,
-            message: "API endpoint not found" 
+            message: "API endpoint not found"
         });
     }
     res.sendFile(path.join(PUBLIC_DIR, "index.html"));
