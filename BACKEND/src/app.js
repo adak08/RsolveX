@@ -53,17 +53,51 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // ─── Security Headers ─────────────────────────────────────────────────────────
+const isDevelopment = process.env.NODE_ENV === "development";
+
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https://res.cloudinary.com"],
-            connectSrc: ["'self'", "wss://*.onrender.com", "https://*.onrender.com"],
-            fontSrc: ["'self'", "data:"],
+            scriptSrc: [
+                "'self'", 
+                "'unsafe-inline'",
+                "https://unpkg.com",
+                "https://*.leafletjs.com"
+            ],
+            styleSrc: [
+                "'self'", 
+                "'unsafe-inline'",
+                "https://fonts.googleapis.com",
+                "https://unpkg.com",
+                "https://*.leafletjs.com"
+            ],
+            imgSrc: [
+                "'self'", 
+                "data:", 
+                "https://res.cloudinary.com",
+                "https://unpkg.com",
+                "https://*.leafletjs.com",
+                "https://*.tile.openstreetmap.org"
+            ],
+            connectSrc: [
+                "'self'", 
+                "wss://*.onrender.com", 
+                "https://*.onrender.com",
+                ...(isDevelopment ? ["http://localhost:3000", "http://localhost:5173", "ws://localhost:5173", "ws://127.0.0.1:5173"] : [])
+            ],
+            fontSrc: [
+                "'self'", 
+                "data:",
+                "https://fonts.gstatic.com"
+            ],
+            mediaSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            frameSrc: ["'none'"],
+            workerSrc: ["'self'", "blob:"]
         }
-    }
+    },
+    crossOriginEmbedderPolicy: false, // Required to allow loading cross-origin images/fonts (like maps and google fonts)
 }));
 
 // ─── Socket.IO Setup ──────────────────────────────────────────────────────────
