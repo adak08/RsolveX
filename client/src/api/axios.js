@@ -18,10 +18,9 @@ import axios from 'axios';
 // In production   → VITE_API_URL = ""  (empty, set in .env.production)
 //                   An empty baseURL makes every axios call use a relative path,
 //                   so /api/... requests go to the same origin serving the page.
-const API_URL = import.meta.env.VITE_API_URL || '';
+const isProduction = import.meta.env.PROD;
+const API_URL = isProduction ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
 
-// Exported for use in the token-refresh call below (needs an absolute URL for
-// the raw axios.post to avoid infinite interceptor loops).
 export const BASE_URL =
   API_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 

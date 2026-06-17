@@ -6,9 +6,14 @@ let socket = null;
 export const socketService = {
   init(token) {
     if (socket) return socket;
-    socket = io(BASE_URL, {
+    
+    const isProduction = import.meta.env.PROD;
+    const SOCKET_URL = isProduction ? '' : (import.meta.env.VITE_SOCKET_URL || BASE_URL || 'http://localhost:3000');
+    
+    socket = io(SOCKET_URL || '/', {
       auth: { token },
       transports: ['websocket', 'polling'],
+      path: '/socket.io'
     });
     socket.on('connect', () => { /* console.log('Socket connected') */ });
     socket.on('disconnect', () => { /* console.log('Socket disconnected') */ });
