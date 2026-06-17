@@ -85,8 +85,11 @@ export default function StaffAuthForm({ onSuccess }) {
     try {
       // Backend expects { identifier, otp } — not { email, otp }
       const res = await api.post('/api/otp/login/staff', { identifier: form.email, otp: form.otp });
-      localStorage.setItem('staffToken', res.data.accessToken);
-      localStorage.setItem('staffData', JSON.stringify(res.data.staff));
+      const accessToken = res.data?.accessToken || res.data?.data?.accessToken;
+      const staff = res.data?.staff || res.data?.data?.staff;
+      if (!accessToken || !staff) throw new Error('Invalid login response from server');
+      localStorage.setItem('staffToken', accessToken);
+      localStorage.setItem('staffData', JSON.stringify(staff));
       window.dispatchEvent(new Event('userLogin'));
       onSuccess('staff');
     } catch (e) { setError(errMsg(e)); } finally { setLoading(false); }
@@ -128,8 +131,11 @@ export default function StaffAuthForm({ onSuccess }) {
         issueCategories: form.issueCategories,
         availabilityStatus: form.availabilityStatus,
       });
-      localStorage.setItem('staffToken', res.data.accessToken);
-      localStorage.setItem('staffData', JSON.stringify(res.data.staff));
+      const accessToken = res.data?.accessToken || res.data?.data?.accessToken;
+      const staff = res.data?.staff || res.data?.data?.staff;
+      if (!accessToken || !staff) throw new Error('Invalid register response from server');
+      localStorage.setItem('staffToken', accessToken);
+      localStorage.setItem('staffData', JSON.stringify(staff));
       // Join workspace after we have a valid token
       if (form.workspaceCode) {
         try { await api.post('/api/workspace/join/staff', { workspaceCode: form.workspaceCode }); } catch {}

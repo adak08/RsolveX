@@ -71,8 +71,11 @@ export default function UserAuthForm({ onSuccess }) {
     try {
       // Backend expects { identifier, otp } — NOT { email, otp }
       const res = await api.post('/api/otp/login/user', { identifier: form.email, otp: form.otp });
-      localStorage.setItem('accessToken', res.data.accessToken);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
+      const accessToken = res.data?.accessToken || res.data?.data?.accessToken;
+      const user = res.data?.user || res.data?.data?.user;
+      if (!accessToken || !user) throw new Error('Invalid login response from server');
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('user', JSON.stringify(user));
       window.dispatchEvent(new Event('userLogin'));
       onSuccess('user');
     } catch (e) { setError(errMsg(e)); } finally { setLoading(false); }
@@ -111,8 +114,11 @@ export default function UserAuthForm({ onSuccess }) {
         phone:    form.phone,
         otp:      form.otp,
       });
-      localStorage.setItem('accessToken', res.data.accessToken);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
+      const accessToken = res.data?.accessToken || res.data?.data?.accessToken;
+      const user = res.data?.user || res.data?.data?.user;
+      if (!accessToken || !user) throw new Error('Invalid signup response from server');
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('user', JSON.stringify(user));
       // Join workspace after token is stored
       if (form.workspaceCode) {
         try { await api.post('/api/workspace/join/user', { workspaceCode: form.workspaceCode }); } catch {}
