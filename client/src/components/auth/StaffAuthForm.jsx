@@ -70,6 +70,16 @@ export default function StaffAuthForm({ onSuccess }) {
     } catch (e) { setError(errMsg(e)); } finally { setLoading(false); }
   };
 
+  const resendLoginOtp = async () => {
+    setLoading(true); setError('');
+    try {
+      await api.post('/api/otp/resend', {
+        identifier: form.email, purpose: 'login',
+      });
+      startTimer(setTimer);
+    } catch (e) { setError(errMsg(e)); } finally { setLoading(false); }
+  };
+
   const handleOtpLogin = async () => {
     setLoading(true); setError('');
     try {
@@ -90,6 +100,16 @@ export default function StaffAuthForm({ onSuccess }) {
         identifier: form.email, purpose: 'signup', type: 'email', userType: 'staff',
       });
       setRegOtpSent(true);
+      startTimer(setRegTimer);
+    } catch (e) { setError(errMsg(e)); } finally { setLoading(false); }
+  };
+
+  const resendRegisterOtp = async () => {
+    setLoading(true); setError('');
+    try {
+      await api.post('/api/otp/resend', {
+        identifier: form.email, purpose: 'signup',
+      });
       startTimer(setRegTimer);
     } catch (e) { setError(errMsg(e)); } finally { setLoading(false); }
   };
@@ -185,7 +205,7 @@ export default function StaffAuthForm({ onSuccess }) {
               <button onClick={handleOtpLogin} disabled={loading || !form.otp} className="btn-primary w-full justify-center disabled:opacity-50">
                 {loading ? 'Verifying…' : 'Verify & Sign In'}
               </button>
-              <button onClick={sendLoginOtp} disabled={timer > 0 || loading} className="btn-ghost w-full justify-center text-xs disabled:opacity-50">
+              <button onClick={resendLoginOtp} disabled={timer > 0 || loading} className="btn-ghost w-full justify-center text-xs disabled:opacity-50">
                 {timer > 0 ? `Resend in ${timer}s` : 'Resend OTP'}
               </button>
             </div>
@@ -276,7 +296,7 @@ export default function StaffAuthForm({ onSuccess }) {
                   {loading ? 'Registering…' : 'Complete Registration'} {!loading && <ArrowRight size={16} />}
                 </button>
                 <button
-                  onClick={sendRegisterOtp}
+                  onClick={resendRegisterOtp}
                   disabled={regTimer > 0 || loading}
                   className="btn-ghost w-full justify-center text-xs disabled:opacity-50"
                 >

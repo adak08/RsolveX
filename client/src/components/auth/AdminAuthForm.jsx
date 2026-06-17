@@ -40,6 +40,14 @@ export default function AdminAuthForm({ onSuccess, onCreateWorkspace }) {
     } catch (e) { setError(errMsg(e)); } finally { setLoading(false); }
   };
 
+  const resendOtp = async () => {
+    setLoading(true); setError('');
+    try {
+      await api.post('/api/otp/resend', { identifier: form.email, purpose: 'login' });
+      startTimer();
+    } catch (e) { setError(errMsg(e)); } finally { setLoading(false); }
+  };
+
   const handleOtpLogin = async () => {
     setLoading(true); setError('');
     try {
@@ -85,7 +93,7 @@ export default function AdminAuthForm({ onSuccess, onCreateWorkspace }) {
             ? <button onClick={sendOtp} disabled={loading || !form.email} className="btn-primary w-full justify-center disabled:opacity-50">{loading ? 'Sending…' : 'Send OTP'}</button>
             : <div className="space-y-2">
                 <button onClick={handleOtpLogin} disabled={loading || !form.otp} className="btn-primary w-full justify-center disabled:opacity-50">{loading ? 'Verifying…' : 'Verify & Sign In'}</button>
-                <button onClick={sendOtp} disabled={timer > 0 || loading} className="btn-ghost w-full justify-center text-xs disabled:opacity-50">{timer > 0 ? `Resend in ${timer}s` : 'Resend OTP'}</button>
+                <button onClick={resendOtp} disabled={timer > 0 || loading} className="btn-ghost w-full justify-center text-xs disabled:opacity-50">{timer > 0 ? `Resend in ${timer}s` : 'Resend OTP'}</button>
               </div>
           }
         </>

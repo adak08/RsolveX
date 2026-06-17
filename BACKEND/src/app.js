@@ -244,7 +244,7 @@ app.get("/api/debug/routes", (req, res) => {
 });
 
 // ─── Auth / Upload Routes (rate limited) ─────────────────────────────────────
-app.use("/api/otp", otpLimiter, otpRoutes);
+app.use("/api/otp", otpRoutes);
 app.use("/api/upload", uploadRouter);
 app.use("/api/users", loginLimiter, userRoutes);
 app.use("/api/staff", loginLimiter, staffRoutes);
@@ -359,7 +359,7 @@ app.use((err, req, res, next) => {
         });
     }
 
-    res.status(err.status || 500).json({
+    res.status(err.statusCode || err.status || 500).json({
         success: false,
         message: err.message || "Server error"
     });
