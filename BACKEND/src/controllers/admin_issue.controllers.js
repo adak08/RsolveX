@@ -80,7 +80,7 @@ export const handleFetchAllUserIssues = async (req, res) => {
 export const handleFetchStaffList = async (req, res) => {
     try {
         const staffList = await Staff.find({ workspaceId: req.workspaceId })
-            .select("name _id staffId email department")
+            .select("name _id staffId email department isActive createdAt")
             .populate("department", "name");
 
         if (staffList.length === 0) {
@@ -104,7 +104,33 @@ export const handleFetchStaffList = async (req, res) => {
     }
 };
 
-// --- 3. Update / Alter Issue — workspace scoped + audit log ---
+// --- 3. Toggle Staff Status ---
+export const handleToggleStaffStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isActive } = req.body;
+
+        const staff = await Staff.findOne({ _id: id, workspaceId: req.workspaceId });
+        
+        if (!staff) {
+            return res.status(404).json({ success: false, message: "Staff not found" });
+        }
+
+        staff.isActive = isActive;
+        await staff.save();
+
+        res.status(200).json({
+            success: true,
+            message: `Staff marked as ${isActive ? 'active' : 'inactive'}`,
+            data: staff
+        });
+    } catch (error) {
+        console.error("Error toggling staff status:", error);
+        res.status(500).json({ success: false, message: "Error updating staff status" });
+    }
+};
+
+// --- 4. Update / Alter Issue — workspace scoped + audit log ---
 export const handleUpdateIssue = async (req, res) => {
     try {
         const { id } = req.params;

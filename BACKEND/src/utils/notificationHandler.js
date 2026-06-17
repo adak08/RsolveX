@@ -17,15 +17,15 @@ export const initIo = (server) => {
     });
 
     io.on("connection", (socket) => {
-        console.log("Client connected:", socket.id);
+        // console.log("Client connected:", socket.id);
 
         socket.on("register", (userId) => {
             socket.join(userId);
-            console.log(`User ${userId} registered`);
+            // console.log(`User ${userId} registered`);
         });
 
         socket.on("disconnect", () => {
-            console.log("Client disconnected:", socket.id);
+            // console.log("Client disconnected:", socket.id);
         });
     });
 
@@ -72,22 +72,22 @@ const notificationHandler = async (userId, type, message, subject, workspaceId =
                 ...notification.toObject(),
                 timestamp: new Date()
             });
-            console.log(`✅ Real-time notification sent to ${details.name}`);
+            // console.log(`✅ Real-time notification sent to ${details.name}`);
         }
 
         // Email first — SMS only as fallback if email fails
         try {
             await sendEmail(details.email, subject || "Notification", message);
-            console.log(`✅ Email notification sent to ${details.email}`);
+            // console.log(`✅ Email notification sent to ${details.email}`);
             // Email succeeded — do NOT send SMS
         } catch (emailErr) {
             console.error(`Email failed for ${details.email}, trying SMS fallback:`, emailErr.message);
             if (details.phone) {
                 sendSMS(details.phone, `[ResolveX]: ${message}`)
-                    .then(() => console.log(`✅ SMS fallback sent to ${details.phone}`))
+                    // .then(() => console.log(`✅ SMS fallback sent to ${details.phone}`))
                     .catch(smsErr => console.error(`SMS fallback also failed for ${details.phone}:`, smsErr.message));
             } else {
-                console.log(`No phone number found for ${details.name} — SMS fallback skipped`);
+                // console.log(`No phone number found for ${details.name} — SMS fallback skipped`);
             }
         }
 

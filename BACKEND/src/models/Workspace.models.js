@@ -52,6 +52,15 @@ const workspaceSchema = new mongoose.Schema({
             type: Boolean,
             default: false
         },
+        aiClassification: {
+            type: Boolean,
+            default: true
+        },
+        staffAssignmentAlgorithm: {
+            type: String,
+            enum: ['round-robin', 'least-busy', 'expertise'],
+            default: 'least-busy'
+        },
         maxComplaintsPerUser: {
             type: Number,
             default: 10

@@ -1,9 +1,11 @@
 import UserComplaint from "../models/UserComplaint.models.js";
 import Leaderboard from "../models/LeaderBoard.models.js";
 import Rating from "../models/Rating.models.js";
+import Workspace from "../models/Workspace.models.js";
 import { getSmartAssignee } from "../utils/assignmentEngine.js";
 import { createAuditLog, AUDIT_ACTIONS } from "../utils/auditLog.js";
 import { classifyComplaintWithAI, calculatePriorityFromCategory } from "../utils/aiClassifier.js";
+import notificationHandler from "../utils/notificationHandler.js";
 
 // GET all issues with workspace scope + search + pagination
 export const handleAllIssueFetch = async (req, res) => {
@@ -116,6 +118,9 @@ export const handleIssueGeneration = async (req, res) => {
 
         const frontendCategory = mapCategoryToBackend(category);
 
+        // Fetch workspace settings explicitly if not present
+        const workspace = req.workspace || await Workspace.findById(req.workspaceId);
+
         // ─── Priority / Category Resolution ──────────────────────────────────
         let resolvedCategory = frontendCategory;
         let resolvedPriority = "medium";
@@ -128,7 +133,7 @@ export const handleIssueGeneration = async (req, res) => {
             resolvedPriority = manualPriority;
             resolvedPriorityMode = "manual";
 
-        } else if (frontendCategory === "other" && (customOtherLabel || description)) {
+        } else if (workspace?.settings?.aiClassification !== false && frontendCategory === "other" && (customOtherLabel || description)) {
             // User selected "other" — let AI figure out real category + priority
             console.log(`🤖 Calling AI classifier for: "${customOtherLabel || title}"`);
 
@@ -184,11 +189,20 @@ export const handleIssueGeneration = async (req, res) => {
         });
 
         // Smart auto-assignment if workspace has it enabled
-        if (req.workspace?.settings?.autoAssign) {
+        if (workspace?.settings?.autoAssign) {
             const assigneeId = await getSmartAssignee(req.workspaceId, resolvedCategory);
             if (assigneeId) {
                 complaint.assignedTo = assigneeId;
                 complaint.status = "in-progress";
+                
+                // Send notification to the assigned staff member
+                await notificationHandler(
+                    assigneeId,
+                    "info",
+                    `You have been auto-assigned a new complaint: "${title}"`,
+                    "New Auto-Assignment",
+                    req.workspaceId
+                );
             }
         }
 

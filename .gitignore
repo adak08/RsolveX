@@ -1,0 +1,65 @@
+# ─── Dependencies ────────────────────────────────────────────────────────────
+node_modules/
+**/node_modules/
+
+# ─── Build output (generated at deploy time) ──────────────────────────────────
+client/dist/
+BACKEND/public/
+
+# ─── Environment variables (secrets — never commit these) ────────────────────
+.env
+.env.*
+!.env.example
+!.env.development.example
+!.env.production.example
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ─── Runtime data ─────────────────────────────────────────────────────────────
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ─── OS files ─────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ─── Editor / IDE ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ─── Misc build / cache ───────────────────────────────────────────────────────
+*.tsbuildinfo
+.npm
+.eslintcache
+.cache
+.parcel-cache
+coverage/
+*.lcov
+.nyc_output/
+
+# ─── Vite ─────────────────────────────────────────────────────────────────────
+# (dist already excluded above)
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.tgz
+.yarn-integrity

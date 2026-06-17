@@ -1,0 +1,19 @@
+{
+  "name": "resolvex-fullstack",
+  "version": "1.0.0",
+  "description": "ResolveX - Full Stack Complaint Management System",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "cd client && npm install && npm run build && cd .. && node scripts/copy-dist.js",
+    "start": "cd BACKEND && node index.js",
+    "dev": "concurrently \"cd BACKEND && npm run dev\" \"cd client && npm run dev\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
+    "install-all": "npm install && cd client && npm install && cd ../BACKEND && npm install",
+    "postinstall": "cd client && npm install && cd ../BACKEND && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0"
+  }
+}

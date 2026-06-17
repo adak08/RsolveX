@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Copy, RefreshCw, Building2, Settings, Users, Lock } from 'lucide-react';
+import { Save, Copy, Building2, Settings, Lock } from 'lucide-react';
 import api from '../../api/axios';
 import { useToast } from '../../components/common/Toast';
 import { errMsg } from '../../utils/helpers';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 
 export default function AdminSettingsPage() {
   const { toast } = useToast();
   const [workspace, setWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', allowPublicComplaints: true, autoAssign: false, maxComplaintsPerUser: 10 });
+  const [form, setForm] = useState({ 
+    name: '', 
+    description: '', 
+    allowPublicComplaints: true, 
+    autoAssign: false, 
+    aiClassification: true,
+    staffAssignmentAlgorithm: 'least-busy',
+    maxComplaintsPerUser: 10 
+  });
 
   const load = async () => {
     try {
@@ -21,10 +30,15 @@ export default function AdminSettingsPage() {
         description: w.description || '',
         allowPublicComplaints: w.settings?.allowPublicComplaints ?? true,
         autoAssign: w.settings?.autoAssign ?? false,
+        aiClassification: w.settings?.aiClassification ?? true,
+        staffAssignmentAlgorithm: w.settings?.staffAssignmentAlgorithm ?? 'least-busy',
         maxComplaintsPerUser: w.settings?.maxComplaintsPerUser ?? 10,
       });
-    } catch (e) { toast('Could not load workspace settings', 'error'); }
-    finally { setLoading(false); }
+    } catch (e) { 
+      toast('Could not load workspace settings', 'error'); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -36,15 +50,27 @@ export default function AdminSettingsPage() {
         name: form.name,
         description: form.description,
         settings: {
+          // Flatten settings object structure for the backend controller
           allowPublicComplaints: form.allowPublicComplaints,
           autoAssign: form.autoAssign,
-          maxComplaintsPerUser: form.maxComplaintsPerUser,
+          aiClassification: form.aiClassification,
+          staffAssignmentAlgorithm: form.staffAssignmentAlgorithm,
+          maxComplaintsPerUser: parseInt(form.maxComplaintsPerUser, 10),
         },
+        // The backend explicitly unpacks these if provided flat, so we provide flat variants as well just in case:
+        allowPublicComplaints: form.allowPublicComplaints,
+        autoAssign: form.autoAssign,
+        aiClassification: form.aiClassification,
+        staffAssignmentAlgorithm: form.staffAssignmentAlgorithm,
+        maxComplaintsPerUser: parseInt(form.maxComplaintsPerUser, 10),
       });
       toast('Settings saved successfully', 'success');
       load();
-    } catch (e) { toast(errMsg(e), 'error'); }
-    finally { setSaving(false); }
+    } catch (e) { 
+      toast(errMsg(e), 'error'); 
+    } finally { 
+      setSaving(false); 
+    }
   };
 
   const copyCode = () => {
@@ -52,9 +78,16 @@ export default function AdminSettingsPage() {
     toast('Workspace code copied!', 'success');
   };
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
+  const handleTextChange = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }));
+  const handleToggleChange = (k) => (val) => setForm(p => ({ ...p, [k]: val }));
 
-  if (loading) return <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">
@@ -92,11 +125,11 @@ export default function AdminSettingsPage() {
         </div>
         <div>
           <label className="text-sm font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Workspace Name</label>
-          <input className="input" value={form.name} onChange={f('name')} />
+          <input className="input" value={form.name} onChange={handleTextChange('name')} />
         </div>
         <div>
           <label className="text-sm font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Description</label>
-          <textarea className="input resize-none" rows={3} value={form.description} onChange={f('description')} />
+          <textarea className="input resize-none" rows={3} value={form.description} onChange={handleTextChange('description')} />
         </div>
       </div>
 
@@ -109,39 +142,75 @@ export default function AdminSettingsPage() {
           <h2 className="font-display font-600 text-base" style={{ color: 'var(--text-primary)' }}>Complaint Settings</h2>
         </div>
 
-        <label className="flex items-center justify-between cursor-pointer">
-          <div>
-            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Allow Public Complaints</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Unauthenticated users can view complaints</p>
-          </div>
-          <div className="relative">
-            <input type="checkbox" className="sr-only" checked={form.allowPublicComplaints} onChange={f('allowPublicComplaints')} />
-            <div className={`w-11 h-6 rounded-full transition-colors ${form.allowPublicComplaints ? 'bg-orange-500' : 'bg-gray-300 dark:bg-gray-600'}`} onClick={() => setForm(p => ({ ...p, allowPublicComplaints: !p.allowPublicComplaints }))}>
-              <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform mt-1 ${form.allowPublicComplaints ? 'translate-x-6' : 'translate-x-1'}`} />
+        <div className="space-y-2">
+          <ToggleSwitch
+            id="toggle-public"
+            label="Allow Public Complaints"
+            description="Unauthenticated users can view complaints"
+            checked={form.allowPublicComplaints}
+            onChange={handleToggleChange('allowPublicComplaints')}
+            loading={saving}
+            disabled={saving}
+          />
+          
+          <ToggleSwitch
+            id="toggle-ai"
+            label="Enable AI Classification"
+            description="Automatically categorize and prioritize 'Other' category complaints using Gemini AI"
+            checked={form.aiClassification}
+            onChange={handleToggleChange('aiClassification')}
+            loading={saving}
+            disabled={saving}
+          />
+
+          <ToggleSwitch
+            id="toggle-assign"
+            label="Auto Assign Complaints"
+            description="Automatically assign incoming complaints to the best available staff member"
+            checked={form.autoAssign}
+            onChange={handleToggleChange('autoAssign')}
+            loading={saving}
+            disabled={saving}
+          />
+        </div>
+
+        {form.autoAssign && (
+          <div className="pl-4 border-l-2 border-orange-500/20 mt-4 py-2 space-y-4">
+            <div>
+              <label className="text-sm font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Assignment Algorithm</label>
+              <select 
+                className="input" 
+                value={form.staffAssignmentAlgorithm} 
+                onChange={handleTextChange('staffAssignmentAlgorithm')}
+                disabled={saving}
+              >
+                <option value="least-busy">Least Busy (Recommended)</option>
+                <option value="expertise">Strict Expertise Matching</option>
+                <option value="round-robin">Round Robin</option>
+              </select>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                Determines how the assignment engine selects the best candidate.
+              </p>
             </div>
           </div>
-        </label>
+        )}
 
-        <label className="flex items-center justify-between cursor-pointer">
-          <div>
-            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Auto Assign</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Automatically assign complaints to available staff</p>
-          </div>
-          <div className="relative">
-            <div className={`w-11 h-6 rounded-full transition-colors cursor-pointer ${form.autoAssign ? 'bg-orange-500' : 'bg-gray-300 dark:bg-gray-600'}`} onClick={() => setForm(p => ({ ...p, autoAssign: !p.autoAssign }))}>
-              <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform mt-1 ${form.autoAssign ? 'translate-x-6' : 'translate-x-1'}`} />
-            </div>
-          </div>
-        </label>
-
-        <div>
-          <label className="text-sm font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Max Complaints Per User</label>
-          <input className="input w-32" type="number" min={1} max={100} value={form.maxComplaintsPerUser} onChange={f('maxComplaintsPerUser')} />
+        <div className="pt-2 border-t mt-4" style={{ borderColor: 'var(--border)' }}>
+          <label className="text-sm font-medium block mb-1.5 mt-2" style={{ color: 'var(--text-secondary)' }}>Max Complaints Per User</label>
+          <input 
+            className="input w-32" 
+            type="number" 
+            min={1} 
+            max={100} 
+            value={form.maxComplaintsPerUser} 
+            onChange={handleTextChange('maxComplaintsPerUser')} 
+            disabled={saving}
+          />
         </div>
       </div>
 
       <button onClick={save} disabled={saving} className="btn-primary gap-2 disabled:opacity-50">
-        <Save size={16} /> {saving ? 'Saving…' : 'Save Settings'}
+        <Save size={16} /> {saving ? 'Saving...' : 'Save Settings'}
       </button>
     </div>
   );

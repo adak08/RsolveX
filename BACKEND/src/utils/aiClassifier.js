@@ -48,8 +48,7 @@ export const classifyComplaintWithAI = async (title, description, customOtherLab
                 ],
                 generationConfig: {
                     temperature: 0.1,       // Low temp = deterministic, factual responses
-                    maxOutputTokens: 300,
-                    responseMimeType: "application/json"
+                    maxOutputTokens: 300
                 }
             })
         });
@@ -130,7 +129,7 @@ const parseGeminiResponse = (rawText) => {
             ? parsed.priority
             : "medium";
 
-        console.log(`✅ AI classified: category=${category}, priority=${priority} — ${parsed.reasoning}`);
+        // console.log(`✅ AI classified: category=${category}, priority=${priority} — ${parsed.reasoning}`);
 
         return {
             category,

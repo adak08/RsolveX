@@ -183,7 +183,7 @@ export const handleGetStaffStats = async (req, res) => {
 // Get admin ID for staff — workspace scoped
 export const getAdminsIdForStaff = asyncHandler(async (req, res) => {
     try {
-        console.log("🔍 Fetching admin for workspace:", req.workspaceId);
+        // console.log("🔍 Fetching admin for workspace:", req.workspaceId);
 
         const admin = await Admin.findOne({
             workspaceId: req.workspaceId,

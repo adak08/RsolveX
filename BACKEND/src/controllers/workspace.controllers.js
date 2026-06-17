@@ -215,6 +215,8 @@ export const updateWorkspaceSettings = asyncHandler(async (req, res) => {
         domainRestrictionDomains,
         allowPublicComplaints,
         autoAssign,
+        aiClassification,
+        staffAssignmentAlgorithm,
         maxComplaintsPerUser
     } = req.body;
 
@@ -239,6 +241,8 @@ export const updateWorkspaceSettings = asyncHandler(async (req, res) => {
 
     if (allowPublicComplaints !== undefined) workspace.settings.allowPublicComplaints = allowPublicComplaints;
     if (autoAssign !== undefined) workspace.settings.autoAssign = autoAssign;
+    if (aiClassification !== undefined) workspace.settings.aiClassification = aiClassification;
+    if (staffAssignmentAlgorithm !== undefined) workspace.settings.staffAssignmentAlgorithm = staffAssignmentAlgorithm;
     if (maxComplaintsPerUser !== undefined) workspace.settings.maxComplaintsPerUser = maxComplaintsPerUser;
 
     await workspace.save();

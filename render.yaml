@@ -1,0 +1,79 @@
+# render.yaml — Render.com Infrastructure-as-Code configuration
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Deploy a single web service that:
+#   1. Installs all dependencies (root + client + BACKEND)
+#   2. Builds the React frontend with Vite
+#   3. Copies client/dist → BACKEND/public
+#   4. Starts the Express server which serves both the API and the SPA
+
+services:
+  - type: web
+    name: resolvex
+    runtime: node
+    region: oregon          # Change to your preferred region (oregon / frankfurt / singapore / ohio)
+    plan: free              # Upgrade to "starter" or higher for always-on
+
+    # ─── Build ───────────────────────────────────────────────────────────────
+    # Render runs this from the repo root before starting the service.
+    buildCommand: npm install && npm run build
+
+    # ─── Start ───────────────────────────────────────────────────────────────
+    # Runs the Express + Socket.IO server.
+    startCommand: npm start
+
+    # ─── Health check ────────────────────────────────────────────────────────
+    healthCheckPath: /health
+
+    # ─── Environment Variables ───────────────────────────────────────────────
+    # Set these in the Render dashboard under "Environment" → "Secret Files"
+    # or use the variables section below with sync: false for secrets.
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: PORT
+        value: 3000
+
+      # ── Secrets — fill these in the Render dashboard, NOT here ────────────
+      - key: MONGODB_URI
+        sync: false           # Render will prompt you to enter the value
+
+      - key: ACCESS_TOKEN_SECRET
+        sync: false
+
+      - key: REFRESH_TOKEN_SECRET
+        sync: false
+
+      - key: ACCESS_TOKEN_EXPIRY
+        value: 15m
+
+      - key: REFRESH_TOKEN_EXPIRY
+        value: 7d
+
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+
+      - key: CLOUDINARY_API_KEY
+        sync: false
+
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      - key: EMAIL_USER
+        sync: false
+
+      - key: EMAIL_PASS
+        sync: false
+
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+
+      - key: FORCE_HTTPS
+        value: "true"

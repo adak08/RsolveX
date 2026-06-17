@@ -6,7 +6,10 @@ import { Server } from "socket.io";
 import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 import csrf from "csurf";
+import path from "path";
+import { fileURLToPath } from "url";
 
+// Import routes
 import userRoutes from "./routes/user.routes.js";
 import staffRoutes from "./routes/staf.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
@@ -25,9 +28,20 @@ import auditRoutes from "./routes/audit.routes.js";
 
 import { otpLimiter, loginLimiter, generalLimiter } from "./middleware/rateLimiter.js";
 
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ─── CHANGED: Resolve public dir relative to BACKEND/ (one level up from src/) ─
+// app.js lives at BACKEND/src/app.js → __dirname = BACKEND/src/
+// The built frontend is copied to  BACKEND/public/
+// So we go one level up: path.join(__dirname, '..', 'public')
+const PUBLIC_DIR = path.join(__dirname, "..", "public");
+
 const app = express();
 const server = createServer(app);
 
+// ─── HTTPS Redirect (Production) ─────────────────────────────────────────────
 if (process.env.NODE_ENV === "production") {
     app.use((req, res, next) => {
         if (req.header('x-forwarded-proto') !== 'https') {
@@ -39,44 +53,90 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // ─── Security Headers ─────────────────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "https://res.cloudinary.com"],
+            connectSrc: ["'self'", "wss://*.onrender.com", "https://*.onrender.com"],
+            fontSrc: ["'self'", "data:"],
+        }
+    }
+}));
 
 // ─── Socket.IO Setup ──────────────────────────────────────────────────────────
 const io = new Server(server, {
     cors: {
-        origin: [
-            "http://127.0.0.1:5500",
-            "http://localhost:5500",
-            "http://127.0.0.1:3000",
-            "http://localhost:3000",
-            "http://localhost:5173",   // ← add this
-            "http://127.0.0.1:5173",
-            "https://adak08.github.io",
-            "https://webster-2025.onrender.com"
-        ],
+        origin: function (origin, callback) {
+            // Allow requests with no origin (like mobile apps or curl)
+            if (!origin) return callback(null, true);
+            
+            // Allow localhost for development
+            if (/^https?:\/\/localhost:\d+$/.test(origin) || origin === 'http://127.0.0.1:5500' || origin === 'http://127.0.0.1:3000' || origin === 'http://127.0.0.1:5173') {
+                return callback(null, true);
+            }
+            
+            // Allow all Render domains securely
+            if (/^https:\/\/[a-zA-Z0-9-]+\.onrender\.com$/.test(origin)) {
+                return callback(null, true);
+            }
+            
+            // Allow specific origins (keep existing)
+            const allowedOrigins = [
+                "http://127.0.0.1:5500",
+                "http://localhost:5500",
+                "http://127.0.0.1:3000",
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "https://adak08.github.io"
+            ];
+            
+            if (allowedOrigins.indexOf(origin) !== -1) {
+                return callback(null, true);
+            }
+            
+            callback(new Error('Not allowed by CORS'));
+        },
         methods: ["GET", "POST"],
         credentials: true
     },
-    transports: ["websocket", "polling"]
+    transports: ["websocket", "polling"],
+    pingTimeout: 60000,
+    pingInterval: 25000
 });
 
 // Make io available globally
 global.io = io;
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-    "http://127.0.0.1:5500",
-    "http://localhost:5500",
-    "http://127.0.0.1:3000",
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://adak08.github.io"
-];
-
 app.use(cors({
     origin: function (origin, callback) {
         if (!origin) return callback(null, true);
+        
+        // Allow localhost for development
+        if (/^https?:\/\/localhost:\d+$/.test(origin) || origin === 'http://127.0.0.1:5500' || origin === 'http://127.0.0.1:3000' || origin === 'http://127.0.0.1:5173') {
+            return callback(null, true);
+        }
+        
+        // Allow all Render domains securely
+        if (/^https:\/\/[a-zA-Z0-9-]+\.onrender\.com$/.test(origin)) {
+            return callback(null, true);
+        }
+        
+        // Allow specific origins
+        const allowedOrigins = [
+            "http://127.0.0.1:5500",
+            "http://localhost:5500",
+            "http://127.0.0.1:3000",
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "https://adak08.github.io"
+        ];
+        
         if (allowedOrigins.indexOf(origin) === -1) {
             const msg = "The CORS policy for this site does not allow access from the specified Origin.";
             return callback(new Error(msg), false);
@@ -84,20 +144,23 @@ app.use(cors({
         return callback(null, true);
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"]
 }));
 
 app.options(/.*/, cors());
 
+// ─── Middleware ──────────────────────────────────────────────────────────────
 app.use(cookieParser());
 
+// ─── JSON Body Parsers ──────────────────────────────────────────────────────
 app.use("/api/upload", express.json({ limit: "10mb" }));
 app.use("/api/users", express.json({ limit: "1mb" }));
 app.use("/api/complaints", express.json({ limit: "2mb" }));
-app.use(express.json({ limit: "1mb" })); // Default
-app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+app.use(express.json({ limit: "2mb" })); // Default for other routes
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
+// ─── CSRF Protection ──────────────────────────────────────────────────────────
 const csrfProtection = csrf({ 
     cookie: {
         httpOnly: true,
@@ -106,20 +169,27 @@ const csrfProtection = csrf({
     } 
 });
 
+// CSRF token endpoint (public)
 app.get("/api/csrf-token", csrfProtection, (req, res) => {
     res.json({ csrfToken: req.csrfToken() });
 });
 
-app.use(csrfProtection);
+// Apply CSRF protection to all non-GET routes
+app.use((req, res, next) => {
+    if (req.method === 'GET' || req.method === 'OPTIONS') {
+        return next();
+    }
+    return csrfProtection(req, res, next);
+});
 
-
-// ─── General Rate Limit ───────────────────────────────────────────────────────
+// ─── Rate Limiting ──────────────────────────────────────────────────────────
 app.use(generalLimiter);
 
 // ─── Debug Route ──────────────────────────────────────────────────────────────
 app.get("/api/debug/routes", (req, res) => {
     res.json({
         message: "Server is running",
+        environment: process.env.NODE_ENV,
         routes: [
             "/api/workspace/register",
             "/api/workspace/join/user",
@@ -157,11 +227,32 @@ app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/ratings", ratingRoutes);
 app.use("/api/audit", auditRoutes);
 
-app.use(express.static("public"));
-
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
-    res.json({ status: "ok", message: "Server is running healthy" });
+    res.json({ 
+        status: "ok", 
+        message: "Server is running healthy",
+        environment: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// ─── Serve Frontend Static Files ────────────────────────────────────────────
+// CHANGED: Use PUBLIC_DIR (BACKEND/public/) instead of __dirname/public (which
+// would have incorrectly resolved to BACKEND/src/public/).
+app.use(express.static(PUBLIC_DIR));
+
+// All non-API routes go to index.html (for React Router SPA)
+// CHANGED: Uses PUBLIC_DIR for the correct path.
+app.get(/.*/, (req, res) => {
+    // Skip API routes — return 404 JSON instead of the SPA shell
+    if (req.path.startsWith("/api/")) {
+        return res.status(404).json({ 
+            success: false,
+            message: "API endpoint not found" 
+        });
+    }
+    res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
 
 // ─── Socket.IO — JWT auth + workspace room isolation ─────────────────────────

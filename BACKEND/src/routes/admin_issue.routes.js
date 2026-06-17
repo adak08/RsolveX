@@ -2,6 +2,7 @@ import express from "express";
 import {
     handleFetchAllUserIssues,
     handleFetchStaffList,
+    handleToggleStaffStatus,
     handleUpdateIssue,
     handleGetComplaintDetails,
     handleBulkAssign
@@ -17,6 +18,7 @@ router.use(adminAuth, workspaceResolver);
 
 router.get("/", handleFetchAllUserIssues);
 router.get("/staff", handleFetchStaffList);
+router.put("/staff/:id/toggle", handleToggleStaffStatus);
 router.get("/:id", handleGetComplaintDetails);
 router.put("/:id", handleUpdateIssue);
 router.post("/bulk-assign", handleBulkAssign);

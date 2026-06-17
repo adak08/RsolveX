@@ -4,7 +4,7 @@ import cloudinary from "../config/cloudinary.js";
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const handleImageUpload = async (req, res) => {
-    console.log("Controller called, files:", req.files?.length);
+    // console.log("Controller called, files:", req.files?.length);
     
     try {
         if (!req.files || req.files.length === 0) {
@@ -52,7 +52,7 @@ export const handleImageUpload = async (req, res) => {
         const results = await Promise.all(uploadPromises);
         const urls = results.map((r) => r.secure_url);
 
-        console.log("Upload successful, URLs:", urls);
+        // console.log("Upload successful, URLs:", urls);
         res.json({ success: true, urls });
     } 
     catch (err) {

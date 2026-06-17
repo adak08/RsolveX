@@ -30,7 +30,7 @@ export default function AdminStaffPage() {
 
   const toggleActive = async (s) => {
     try {
-      await api.put(`/api/admin/issues/${s._id}`, { isActive: !s.isActive });
+      await api.put(`/api/admin/issues/staff/${s._id}/toggle`, { isActive: !s.isActive });
       toast(`${s.name} ${!s.isActive ? 'activated' : 'deactivated'}`, 'success');
       load();
     } catch (e) { toast(errMsg(e), 'error'); }

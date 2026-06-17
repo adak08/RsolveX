@@ -26,7 +26,7 @@ const upload = multer({
 }).array("image", 5);
 
 router.post("/", (req, res, next) => {
-    console.log("Upload route hit");
+    // console.log("Upload route hit");
     
     upload(req, res, function (err) {
         if (err) {
@@ -34,7 +34,7 @@ router.post("/", (req, res, next) => {
             return res.status(400).json({ success: false, message: err.message });
         }
         
-        console.log("Multer success, files:", req.files?.length);
+        // console.log("Multer success, files:", req.files?.length);
         next();
     });
 }, handleImageUpload);

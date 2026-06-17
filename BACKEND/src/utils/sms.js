@@ -16,13 +16,13 @@ const getTwilioClient = () => {
     if (sid && auth && phone) {
       try {
         twilioClient = twilio(sid, auth);
-        console.log("Twilio SMS configured");
+        // console.log("Twilio SMS configured");
       } catch (error) {
-        console.log("Twilio SMS disabled - Invalid credentials");
+        // console.log("Twilio SMS disabled - Invalid credentials");
         twilioClient = null;
       }
     } else {
-      console.log("Twilio SMS disabled - Missing credentials in .env");
+      // console.log("Twilio SMS disabled - Missing credentials in .env");
     }
   }
 
@@ -35,8 +35,8 @@ const sendSMS = async (to, message) => {
   try {
     if (!client) {
       if (process.env.NODE_ENV === "development") {
-        console.log("SMS (Dev Mode) to:", to);
-        console.log("Message:", message);
+        // console.log("SMS (Dev Mode) to:", to);
+        // console.log("Message:", message);
         return;
       }
       throw new Error("Twilio not configured");
@@ -54,7 +54,7 @@ const sendSMS = async (to, message) => {
       to: phoneNumber,
     });
 
-    console.log(`SMS sent successfully to ${phoneNumber}`);
+    // console.log(`SMS sent successfully to ${phoneNumber}`);
   } catch (error) {
     console.error("SMS sending failed:", error.message);
 

@@ -56,7 +56,7 @@ export const getSmartAssignee = async (workspaceId, category = null) => {
             .select("_id name issueCategories availabilityStatus maxActiveComplaints");
 
         if (!staffList.length) {
-            console.log("Smart assign: No active staff found in workspace", workspaceId);
+            // console.log("Smart assign: No active staff found in workspace", workspaceId);
             return null;
         }
 
@@ -97,10 +97,10 @@ export const getSmartAssignee = async (workspaceId, category = null) => {
         });
 
         const selectedStaff = candidateStaff[0];
-        console.log(
-            `Smart assign: Assigning ${normalizedCategory} complaint to ${selectedStaff.name} ` +
-            `(availability: ${selectedStaff.availabilityStatus || "available"}, load: ${loadMap[selectedStaff._id.toString()] || 0}/${selectedStaff.maxActiveComplaints || 5})`
-        );
+        // console.log(
+        //     `Smart assign: Assigning ${normalizedCategory} complaint to ${selectedStaff.name} ` +
+        //     `(availability: ${selectedStaff.availabilityStatus || "available"}, load: ${loadMap[selectedStaff._id.toString()] || 0}/${selectedStaff.maxActiveComplaints || 5})`
+        // );
         return selectedStaff._id;
 
     } catch (error) {

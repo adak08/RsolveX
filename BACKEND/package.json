@@ -1,16 +1,19 @@
 {
-  "name": "backend",
+  "name": "resolvex-backend",
   "version": "1.0.0",
-  "description": "BACKEND for RESOLVEX",
-  "main": "src/index.js",
+  "description": "ResolveX Backend - Complaint Management System API",
+  "main": "index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "migrate": "node scripts/migrate-to-workspace.js"
   },
   "author": "",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "devDependencies": {
     "nodemon": "^3.1.10"
   },
@@ -32,7 +35,7 @@
     "multer": "^2.0.2",
     "nanoid": "^5.1.5",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.9",
+    "nodemailer": "^9.0.1",
     "path": "^0.12.7",
     "pdfkit": "^0.17.2",
     "prettier": "^3.6.2",

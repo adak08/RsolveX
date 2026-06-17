@@ -36,7 +36,7 @@ export const sendEmail = async (to, subject, text, html) => {
       throw new ApiError(500, `Failed to send email: ${data.message || "Unknown error"}`);
     }
 
-    console.log(`✅ Email sent successfully to ${to}`);
+    // console.log(`✅ Email sent successfully to ${to}`);
     return data;
   } catch (error) {
     console.error("❌ Email sending failed:", error);
