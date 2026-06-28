@@ -303,9 +303,9 @@ BREVO_API_KEY=your_brevo_api_key
 FROM_EMAIL=noreply@yourdomain.com
 
 # Twilio for SMS (optional)
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
-TWILIO_PHONE_NUMBER=+1234567890
+TWILIO_SID=your_twilio_sid
+TWILIO_AUTH=your_twilio_token
+TWILIO_PHONE=+1234567890
 
 # Google Gemini AI
 GEMINI_API_KEY=your_gemini_api_key
@@ -379,9 +379,16 @@ pm2 start npm --name "resolvex" -- start
 | GET | `/api/user_issues` | List all complaints (workspace-scoped) |
 | POST | `/api/user_issues` | Create a complaint |
 | GET | `/api/user_issues/my-issues` | List user's complaints |
+| GET | `/api/user_issues/locations` | Map pin data for complaints |
 | GET | `/api/user_issues/:id` | Get complaint details |
 | PUT | `/api/user_issues/:id/vote` | Vote on a complaint |
 | POST | `/api/user_issues/:id/rate` | Rate a resolved complaint |
+| GET | `/api/user_issues/:id/rating` | Get rating for a complaint |
+| POST | `/api/upload` | Upload images (to Cloudinary/memory) |
+| GET | `/api/leaderboard` | Workspace-scoped leaderboard |
+| GET | `/api/leaderboard/me` | Logged-in user's rank and stats |
+| GET | `/api/notifications/:userId` | Get user notifications |
+| PATCH | `/api/notifications/:id/read` | Mark notification as read |
 
 ### Staff Endpoints (require `staffAuth`)
 
@@ -409,6 +416,9 @@ pm2 start npm --name "resolvex" -- start
 | GET | `/api/admin/analytics/heatmap` | Get heatmap data |
 | GET | `/api/admin/analytics/export` | Export CSV/PDF |
 | GET | `/api/admin/analytics/staff-performance` | Staff performance metrics |
+| GET | `/api/audit` | Full audit log for the workspace |
+| GET | `/api/audit/:entityId` | Audit logs for a specific entity |
+| GET | `/api/ratings/staff/:staffId` | View staff ratings |
 
 ### Workspace & Admin Management
 
